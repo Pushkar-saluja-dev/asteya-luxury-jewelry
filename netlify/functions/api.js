@@ -89912,8 +89912,7 @@ if (!isSupabaseConfigured) {
       try {
         const { data: dbProducts, error: dbError } = await supabase.from("products").select("id");
         if (!dbError) {
-          const dbIds = new Set(dbProducts ? dbProducts.map((p) => p.id) : []);
-          const productsToSeed = PRODUCTS.filter((p) => !dbIds.has(p.id));
+          const productsToSeed = dbProducts && dbProducts.length === 0 ? PRODUCTS : [];
           if (productsToSeed.length > 0) {
             console.log(`ASTEYA Auto-Seeder: Seeding ${productsToSeed.length} standard fine jewelry creations into Supabase...`);
             const seedPayloads = productsToSeed.map((p) => ({

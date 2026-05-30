@@ -230,8 +230,9 @@ if (!isSupabaseConfigured) {
         try {
           const { data: dbProducts, error: dbError } = await supabase.from("products").select("id");
           if (!dbError) {
-            const dbIds = new Set(dbProducts ? dbProducts.map((p: any) => p.id) : []);
-            const productsToSeed = PRODUCTS.filter(p => !dbIds.has(p.id));
+            // Only seed standard creations if the database is completely empty (0 products)
+            // This prevents deleted products from aggressively reappearing during server restarts
+            const productsToSeed = (dbProducts && dbProducts.length === 0) ? PRODUCTS : [];
             
             if (productsToSeed.length > 0) {
               console.log(`ASTEYA Auto-Seeder: Seeding ${productsToSeed.length} standard fine jewelry creations into Supabase...`);
