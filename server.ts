@@ -1255,7 +1255,14 @@ async function bootstrap() {
   });
 }
 
-if (!process.env.VERCEL) {
+const isServerless = !!(
+  process.env.VERCEL ||
+  process.env.NETLIFY ||
+  process.env.LAMBDA_TASK_ROOT ||
+  process.env.SERVERLESS
+);
+
+if (!isServerless) {
   bootstrap().catch((err) => {
     console.error("Critical: ASTEYA Atelier Engine failed to ignite:", err);
   });
