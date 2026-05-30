@@ -1,0 +1,6 @@
+{
+  "name": "Asteya Luxury Jewelry",
+  "description": "A cinematic, AI-powered digital atelier and luxury boutique for handcrafted fine jewelry.",
+  "requestFramePermissions": ["camera"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

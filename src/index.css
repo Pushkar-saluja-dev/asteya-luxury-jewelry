@@ -1,0 +1,79 @@
+@import "tailwindcss";
+
+@theme {
+  --color-plum-950: #1a0a16;
+  --color-plum-900: #2d0b23;
+  --color-plum-800: #3a1130;
+  --color-plum-700: #49173d;
+  --color-plum-600: #5f1f50;
+  --color-gold-classic: #c5a059;
+  --color-gold-light: #e2c992;
+  --color-gold-pale: #e2c992;
+  --color-gold-dim: #907137;
+  
+  --font-cinzel: "Cinzel", serif;
+  --font-cormorant: "Cormorant Garamond", serif;
+  --font-outfit: "Outfit", sans-serif;
+  --font-sans: "Inter", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", monospace;
+  
+  --animate-sparkle: sparkle 2s ease-in-out infinite;
+  --animate-gold-shimmer: gold-shimmer 4s linear infinite;
+}
+
+@keyframes sparkle {
+  0%, 100% { opacity: 0.3; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.15); filter: drop-shadow(0 0 4px #d4af37); }
+}
+
+@keyframes gold-shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+/* Base custom interactive states and cinematic shadows */
+.shadow-gold-soft {
+  box-shadow: 0 4px 20px -5px rgba(197, 160, 89, 0.2);
+}
+
+.shadow-gold-glow {
+  box-shadow: 0 0 30px rgba(197, 160, 89, 0.3);
+}
+
+.bg-gold-gradient {
+  background: linear-gradient(135deg, #c5a059 0%, #e2c992 50%, #907137 100%);
+}
+
+.border-gold-gradient {
+  border-image: linear-gradient(to right, #c5a059, #e2c992, #907137) 1;
+}
+
+/* Custom transitions and glass effects */
+.glass-panel {
+  background: rgba(26, 10, 22, 0.75);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(197, 160, 89, 0.2);
+}
+
+.glass-panel-heavy {
+  background: rgba(45, 11, 35, 0.95);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(197, 160, 89, 0.3);
+}
+
+/* Elegant gold-shimmer text action */
+.text-shimmer {
+  background: linear-gradient(to right, #907137 0%, #e2c992 25%, #c5a059 50%, #e2c992 75%, #907137 100%);
+  background-size: 200% auto;
+  color: transparent;
+  background-clip: text;
+  -webkit-background-clip: text;
+  animation: gold-shimmer 6s linear infinite;
+}
+
+/* Artistic Flair immersive theatrical stage background */
+.bg-viewer-radial {
+  background: radial-gradient(circle at center, #2d0b23 0%, #1a0a16 80%);
+}
