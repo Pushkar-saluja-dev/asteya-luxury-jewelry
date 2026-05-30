@@ -812,7 +812,7 @@ export default function AdminDashboard({ products, onRefreshProducts }: AdminDas
               </div>
 
               {/* Materials, Carat weight, Dimensions */}
-              <div className="md:col-span-4 space-y-2">
+              <div className="md:col-span-6 space-y-2">
                 <label className="text-[10px] uppercase tracking-widest text-gold-pale/70 block">Materials (comma separated)</label>
                 <input
                   type="text"
@@ -823,19 +823,7 @@ export default function AdminDashboard({ products, onRefreshProducts }: AdminDas
                 />
               </div>
 
-              <div className="md:col-span-4 space-y-2">
-                <label className="text-[10px] uppercase tracking-widest text-gold-pale/70 block">Total Carat Weight (ctwt)</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={caratWeight}
-                  onChange={(e) => setCaratWeight(Number(e.target.value))}
-                  className="w-full bg-plum-900 border border-gold-classic/15 focus:border-gold-classic/60 p-3.5 text-xs rounded-sm text-[#f5f0f5] placeholder-gray-600 focus:outline-none font-outfit"
-                />
-              </div>
-
-              <div className="md:col-span-4 space-y-2">
+              <div className="md:col-span-6 space-y-2">
                 <label className="text-[10px] uppercase tracking-widest text-gold-pale/70 block">Dimensions Spec</label>
                 <input
                   type="text"
@@ -866,63 +854,6 @@ export default function AdminDashboard({ products, onRefreshProducts }: AdminDas
                   onChange={(e) => setPhysicalWidth(Number(e.target.value))}
                   className="w-full bg-plum-900 border border-gold-classic/20 focus:border-gold-classic p-3.5 text-xs rounded-sm text-[#f5f0f5] placeholder-gray-600 focus:outline-none font-outfit shadow-gold-soft"
                 />
-              </div>
-
-              {/* Atelier Certified specs details */}
-              <div className="md:col-span-12 border border-gold-classic/10 p-5 rounded-sm bg-[#120313]/25 space-y-4">
-                <span className="text-[9px] uppercase tracking-widest text-gold-classic font-mono font-bold block">Atelier Technical Specification Details</span>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <label className="text-[9px] uppercase tracking-widest text-gray-400 block">Reference ID</label>
-                    <input
-                      type="text"
-                      placeholder="AST-RG-00104"
-                      value={refId}
-                      onChange={(e) => setRefId(e.target.value)}
-                      className="w-full bg-plum-950 border border-gold-classic/10 p-2.5 text-xs rounded-sm text-white focus:outline-none"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-[9px] uppercase tracking-widest text-gray-400 block">Metal Weight/Purity</label>
-                    <input
-                      type="text"
-                      placeholder="18K (750/1000) Solid Gold"
-                      value={metalPurity}
-                      onChange={(e) => setMetalPurity(e.target.value)}
-                      className="w-full bg-plum-950 border border-gold-classic/10 p-2.5 text-xs rounded-sm text-white focus:outline-none"
-                    />
-                  </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <input
-                      type="text"
-                      value={customSpecKey1}
-                      onChange={(e) => setCustomSpecKey1(e.target.value)}
-                      className="bg-plum-950/40 border border-gold-classic/5 p-2.5 text-xs rounded-sm text-gold-pale font-mono"
-                    />
-                    <input
-                      type="text"
-                      placeholder="Value"
-                      value={customSpecVal1}
-                      onChange={(e) => setCustomSpecVal1(e.target.value)}
-                      className="bg-plum-950 border border-gold-classic/10 p-2.5 text-xs rounded-sm text-white focus:outline-none"
-                    />
-                  </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <input
-                      type="text"
-                      value={customSpecKey2}
-                      onChange={(e) => setCustomSpecKey2(e.target.value)}
-                      className="bg-plum-950/40 border border-gold-classic/5 p-2.5 text-xs rounded-sm text-gold-pale font-mono"
-                    />
-                    <input
-                      type="text"
-                      placeholder="Value"
-                      value={customSpecVal2}
-                      onChange={(e) => setCustomSpecVal2(e.target.value)}
-                      className="bg-plum-950 border border-gold-classic/10 p-2.5 text-xs rounded-sm text-white focus:outline-none"
-                    />
-                  </div>
-                </div>
               </div>
 
               {/* Media Loaders */}
