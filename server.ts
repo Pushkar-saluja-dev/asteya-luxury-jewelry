@@ -1,6 +1,5 @@
 import express from "express";
 import path from "path";
-import { createServer as createViteServer } from "vite";
 import { GoogleGenAI } from "@google/genai";
 import { createClient } from "@supabase/supabase-js";
 import dotenv from "dotenv";
@@ -1233,6 +1232,7 @@ app.post("/api/ai/concierge", async (req, res) => {
 
 async function bootstrap() {
   if (process.env.NODE_ENV !== "production") {
+    const { createServer as createViteServer } = await import("vite");
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: "spa",
