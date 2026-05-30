@@ -4,8 +4,8 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "tsx server.ts",
-    "build": "vite build && esbuild netlify_entry.ts --bundle --platform=node --format=cjs --external:vite --sourcemap --outfile=netlify/functions/api.js && esbuild server.ts --bundle --platform=node --format=cjs --packages=external --sourcemap --outfile=dist/server.cjs",
+    "dev": "tsx local_server.ts",
+    "build": "vite build && esbuild netlify_entry.ts --bundle --platform=node --format=cjs --external:vite --sourcemap --outfile=netlify/functions/api.js && esbuild local_server.ts --bundle --platform=node --format=cjs --packages=external --sourcemap --outfile=dist/server.cjs",
     "preview": "node dist/server.cjs",
     "start": "node dist/server.cjs",
     "lint": "tsc --noEmit"

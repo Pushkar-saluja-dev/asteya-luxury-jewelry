@@ -1230,42 +1230,4 @@ app.post("/api/ai/concierge", async (req, res) => {
 
 // ================= VITE DEV / PRODUCTION SERVER GATEWAY =================
 
-async function bootstrap() {
-  if (process.env.NODE_ENV !== "production") {
-    const { createServer: createViteServer } = await import("vite");
-    const vite = await createViteServer({
-      server: { middlewareMode: true },
-      appType: "spa",
-    });
-    app.use(vite.middlewares);
-    console.log("ASTEYA Gateway: Vite dev-middleware mounted.");
-  } else {
-    const distPath = path.join(process.cwd(), "dist");
-    app.use(express.static(distPath));
-    app.get("*", (req, res) => {
-      res.sendFile(path.join(distPath, "index.html"));
-    });
-    console.log("ASTEYA Gateway: Static client files mounted from /dist.");
-  }
-
-  app.listen(PORT, "0.0.0.0", () => {
-    console.log(`===============================================`);
-    console.log(`👑 ASTEYA Haute Atelier Engine Live on Port ${PORT} 👑`);
-    console.log(`===============================================`);
-  });
-}
-
-const isServerless = !!(
-  process.env.VERCEL ||
-  process.env.NETLIFY ||
-  process.env.LAMBDA_TASK_ROOT ||
-  process.env.SERVERLESS
-);
-
-if (!isServerless) {
-  bootstrap().catch((err) => {
-    console.error("Critical: ASTEYA Atelier Engine failed to ignite:", err);
-  });
-}
-
 export default app;
