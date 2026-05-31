@@ -529,12 +529,9 @@ export default function App() {
             </p>
           </div>
           <div>
-            <h5 className="font-cinzel text-gold-classic uppercase tracking-wider mb-4 font-semibold">Atelier Houses</h5>
+            <h5 className="font-cinzel text-gold-classic uppercase tracking-wider mb-4 font-semibold">Atelier House</h5>
             <ul className="space-y-2.5">
-              <li>Place Vendôme, Paris</li>
-              <li>New Bond Street, London</li>
-              <li>Fifth Avenue, New York</li>
-              <li>Ginza Central, Tokyo</li>
+              <li>Amritsar, India</li>
             </ul>
           </div>
           <div>
