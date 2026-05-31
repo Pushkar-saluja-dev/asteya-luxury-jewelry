@@ -136,6 +136,12 @@ const callAIEngine = async (params: {
         messages.push({ role: "user", content: params.prompt });
       }
 
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => {
+        controller.abort();
+        console.warn("ASTEYA Core: NVIDIA NIM query timed out after 5 seconds.");
+      }, 5000);
+
       const response = await fetch("https://integrate.api.nvidia.com/v1/chat/completions", {
         method: "POST",
         headers: {
@@ -147,8 +153,11 @@ const callAIEngine = async (params: {
           messages,
           temperature: 0.2,
           max_tokens: 1024
-        })
+        }),
+        signal: controller.signal
       });
+
+      clearTimeout(timeoutId);
 
       if (!response.ok) {
         throw new Error(`NVIDIA NIM HTTP Error: ${response.status}`);
