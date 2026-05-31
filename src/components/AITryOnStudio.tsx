@@ -1416,6 +1416,27 @@ export default function AITryOnStudio({
                 </motion.div>
               )}
 
+              {(analyzingState === "capturing" || analyzingState === "landmarks" || analyzingState === "gemologist") && (
+                <motion.div
+                  key="loadingReport"
+                  initial={{ opacity: 0, y: 15 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -15 }}
+                  className="glass-panel p-6 rounded-sm text-center py-20 flex flex-col items-center justify-center space-y-6 bg-gold-classic/[0.02] border-gold-classic/10"
+                >
+                  <RefreshCw className="w-10 h-10 text-gold-classic animate-spin" />
+                  <div className="space-y-2">
+                    <h3 className="font-cinzel text-xs tracking-[0.2em] text-[#f5f0f5] uppercase font-bold animate-pulse">
+                      Analyzing Portrait
+                    </h3>
+                    <p className="font-cormorant text-gold-pale/80 text-sm italic max-w-xs leading-relaxed">
+                      "{analysisLogs}"
+                    </p>
+                  </div>
+                  <div className="w-32 h-[1px] bg-gold-classic/20" />
+                </motion.div>
+              )}
+
               {analyzingState === "complete" && aiReport && (
                 <motion.div
                   key="reportComplete"
