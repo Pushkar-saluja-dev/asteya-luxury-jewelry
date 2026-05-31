@@ -515,13 +515,15 @@ export default function AITryOnStudio({
     if (videoRef.current && canvasRef.current) {
       const ctx = canvasRef.current.getContext("2d");
       if (ctx) {
-        // draw video frame to canvas
-        canvasRef.current.width = videoRef.current.videoWidth;
-        canvasRef.current.height = videoRef.current.videoHeight;
+        // draw video frame to canvas with a maximized width of 360px for high-performance AI vision analysis
+        const maxW = 360;
+        const ratio = videoRef.current.videoHeight / videoRef.current.videoWidth;
+        canvasRef.current.width = maxW;
+        canvasRef.current.height = Math.round(maxW * ratio);
         ctx.scale(-1, 1); // Mirror
         ctx.drawImage(videoRef.current, -canvasRef.current.width, 0, canvasRef.current.width, canvasRef.current.height);
         
-        const b64 = canvasRef.current.toDataURL("image/jpeg");
+        const b64 = canvasRef.current.toDataURL("image/jpeg", 0.7); // 70% quality compression
         setSnappedPhoto(b64);
         shutdownWebcam();
       }

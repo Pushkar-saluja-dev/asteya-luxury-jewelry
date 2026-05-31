@@ -89813,6 +89813,19 @@ if (API_KEY && API_KEY !== "MY_GEMINI_API_KEY") {
   }
 }
 var callAIEngine = async (params) => {
+  let imageBase64 = params.imageBase64;
+  if (imageBase64 && imageBase64.startsWith("http")) {
+    try {
+      console.log("ASTEYA AI: Fetching preset model image URL and converting to base64...");
+      const imgRes = await fetch(imageBase64);
+      if (imgRes.ok) {
+        const buffer = await imgRes.arrayBuffer();
+        imageBase64 = `data:image/jpeg;base64,${Buffer.from(buffer).toString("base64")}`;
+      }
+    } catch (fetchErr) {
+      console.warn("ASTEYA AI: Failed to fetch preset model image, using raw parameter.", fetchErr);
+    }
+  }
   const nvidiaKey = process.env.NVIDIA_API_KEY;
   const useNvidia = nvidiaKey && nvidiaKey.startsWith("nvapi-");
   if (useNvidia) {
@@ -89820,8 +89833,8 @@ var callAIEngine = async (params) => {
     try {
       const messages = [];
       let model = "meta/llama-3.1-70b-instruct";
-      if (params.imageBase64) {
-        const cleanBase64 = params.imageBase64.replace(/^data:image\/\w+;base64,/, "");
+      if (imageBase64) {
+        const cleanBase64 = imageBase64.replace(/^data:image\/\w+;base64,/, "");
         model = "meta/llama-3.2-11b-vision-instruct";
         messages.push({
           role: "user",
@@ -89865,8 +89878,8 @@ var callAIEngine = async (params) => {
   if (ai) {
     console.log("ASTEYA Core: Orchestrating AI query via Google Gemini API...");
     const contents = [];
-    if (params.imageBase64) {
-      const cleanBase64 = params.imageBase64.replace(/^data:image\/\w+;base64,/, "");
+    if (imageBase64) {
+      const cleanBase64 = imageBase64.replace(/^data:image\/\w+;base64,/, "");
       contents.push({
         inlineData: {
           mimeType: "image/jpeg",
@@ -90469,7 +90482,37 @@ app.post("/api/ai/classify", async (req, res) => {
 });
 app.post("/api/ai/tryon", async (req, res) => {
   const { productId, userImage, isLiveCamera } = req.body;
-  const product = PRODUCTS.find((p) => p.id === productId) || PRODUCTS[0];
+  let product = null;
+  if (supabase) {
+    try {
+      const { data, error } = await supabase.from("products").select("*").eq("id", productId).single();
+      if (!error && data) {
+        product = {
+          id: data.id,
+          name: data.name,
+          slug: data.slug,
+          category: data.category,
+          categoryLabel: data.category_label,
+          price: data.price,
+          description: data.description,
+          materials: data.materials || [],
+          dimensions: data.dimensions,
+          caratWeight: data.carat_weight,
+          images: data.images || [],
+          modelUrl: data.model_url,
+          isNew: data.is_new,
+          isLimited: data.is_limited,
+          collection: data.collection,
+          specifications: data.specifications || {}
+        };
+      }
+    } catch (dbErr) {
+      console.warn("ASTEYA AI: Database error fetching custom product, using local catalog fallback.", dbErr);
+    }
+  }
+  if (!product) {
+    product = PRODUCTS.find((p) => p.id === productId) || PRODUCTS[0];
+  }
   console.log(`ASTEYA AI: Processing try-on for product [${product.name}]...`);
   let responseText = "";
   let faceShapeResult = "Oval / Cinematic Grace";

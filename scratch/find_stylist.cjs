@@ -4,7 +4,7 @@ const path = require('path');
 const filePath = 'c:\\Users\\pushk\\Desktop\\asteya\\asteya-luxury-jewelry\\src\\components\\AITryOnStudio.tsx';
 const content = fs.readFileSync(filePath, 'utf8');
 
-const queries = ['stylist', 'assessment', 'initiate', 'analyze', 'api/stylist', 'fetch', 'skinRationale'];
+const queries = ['canvas', 'toDataURL', 'snap', 'capture', 'webcam'];
 queries.forEach(query => {
   console.log(`\nReferences to "${query}" in AITryOnStudio.tsx:`);
   const lines = content.split('\n');
