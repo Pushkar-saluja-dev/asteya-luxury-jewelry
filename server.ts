@@ -1343,21 +1343,27 @@ app.post("/api/checkout", async (req, res) => {
 
   // 3. Construct Opulent HTML Email Template
   const itemsHtml = items.map((item: any) => `
-    <div style="display: flex; margin-bottom: 20px; border-bottom: 1px solid rgba(197, 168, 128, 0.1); padding-bottom: 15px; align-items: center;">
-      <img src="${item.product.images[0]}" alt="${item.product.name}" style="width: 70px; height: 70px; object-fit: cover; border: 1px solid rgba(197, 168, 128, 0.2); background-color: #170715; margin-right: 15px; border-radius: 2px;" />
-      <div style="flex: 1;">
-        <h3 style="font-family: 'Cinzel', 'Georgia', serif; font-size: 13px; letter-spacing: 1px; color: #f7f2f7; margin: 0 0 4px 0; text-transform: uppercase;">
-          ${item.product.name}
-        </h3>
-        <p style="font-family: 'Arial', sans-serif; font-size: 11px; color: #a392a1; margin: 0 0 8px 0;">
-          ${item.product.categoryLabel} ${item.selectedSize ? `&bull; Size: ${item.selectedSize}` : ""}
-        </p>
-        <div style="display: flex; justify-content: space-between; font-family: 'Arial', sans-serif; font-size: 12px; color: #f7f2f7;">
-          <span>Quantity: ${item.quantity}</span>
-          <span style="color: #c5a880; font-weight: bold;">${formatPrice(item.product.price * item.quantity)}</span>
-        </div>
-      </div>
-    </div>
+    <table width="100%" style="margin-bottom: 20px; border-bottom: 1px solid rgba(197, 168, 128, 0.1); padding-bottom: 15px; border-collapse: collapse;">
+      <tr>
+        <td width="70" style="vertical-align: middle; padding-right: 15px;">
+          <img src="${item.product.images[0]}" alt="${item.product.name}" width="70" height="70" style="display: block; object-fit: cover; border: 1px solid rgba(197, 168, 128, 0.2); background-color: #170715; border-radius: 2px;" />
+        </td>
+        <td style="vertical-align: middle;">
+          <h3 style="font-family: 'Cinzel', 'Georgia', serif; font-size: 13px; letter-spacing: 1px; color: #f7f2f7; margin: 0 0 4px 0; text-transform: uppercase; font-weight: normal;">
+            ${item.product.name}
+          </h3>
+          <p style="font-family: 'Arial', sans-serif; font-size: 11px; color: #a392a1; margin: 0 0 8px 0;">
+            ${item.product.categoryLabel || "Jewelry Ateliers"} ${item.selectedSize ? `&bull; Size: ${item.selectedSize}` : ""}
+          </p>
+          <table width="100%" style="border-collapse: collapse; font-family: 'Arial', sans-serif; font-size: 12px; color: #f7f2f7;">
+            <tr>
+              <td style="color: #a392a1; font-family: 'Arial', sans-serif;">Quantity: ${item.quantity}</td>
+              <td style="text-align: right; color: #c5a880; font-weight: bold; font-family: 'Arial', sans-serif;">${formatPrice(item.product.price * item.quantity)}</td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
   `).join("");
 
   const emailHtml = `
