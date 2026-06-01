@@ -1,7 +1,7 @@
-import { ShoppingBag, X, Trash2, ArrowRight, Clock, ShieldCheck, HelpCircle } from "lucide-react";
+import { ShoppingBag, X, Trash2, ArrowRight, Clock, ShieldCheck } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
-import { useState } from "react";
-import { CartItem } from "../types";
+import { useState, useEffect } from "react";
+import { CartItem, User } from "../types";
 
 interface CartDrawerProps {
   isOpen: boolean;
@@ -10,6 +10,7 @@ interface CartDrawerProps {
   onRemoveItem: (index: number) => void;
   onUpdateQuantity: (index: number, qty: number) => void;
   onClearCart: () => void;
+  currentUser?: User | null;
 }
 
 export default function CartDrawer({
@@ -18,10 +19,19 @@ export default function CartDrawer({
   cartItems,
   onRemoveItem,
   onUpdateQuantity,
-  onClearCart
+  onClearCart,
+  currentUser
 }: CartDrawerProps) {
   const [checkingOut, setCheckingOut] = useState(false);
   const [checkoutStep, setCheckoutStep] = useState(0);
+  const [showForm, setShowForm] = useState(false);
+  const [formData, setFormData] = useState({
+    name: "",
+    email: "",
+    phone: "",
+    address: ""
+  });
+  const [error, setError] = useState<string | null>(null);
 
   const subtotal = cartItems.reduce((acc, item) => acc + item.product.price * item.quantity, 0);
   const secureDelivery = subtotal > 15000 ? 0 : 500; // Complimentary VIP Armored Delivery over ₹15k
@@ -36,28 +46,81 @@ export default function CartDrawer({
     }).format(price);
   };
 
-  // Luxury high-end checkout simulation stages
-  const executeBespokeCheckout = () => {
+  // Synchronize/pre-fill form data when showForm goes true
+  const handleStartCheckout = () => {
+    setFormData({
+      name: formData.name || currentUser?.name || "",
+      email: formData.email || currentUser?.email || "",
+      phone: formData.phone || "",
+      address: formData.address || ""
+    });
+    setShowForm(true);
+  };
+
+  // Reset form when drawer is closed
+  useEffect(() => {
+    if (!isOpen) {
+      setShowForm(false);
+      setError(null);
+    }
+  }, [isOpen]);
+
+  const handleCheckoutSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!formData.name || !formData.email || !formData.phone || !formData.address) {
+      setError("All credentials must be locked to authorize dispatch.");
+      return;
+    }
+    
+    setError(null);
     setCheckingOut(true);
     setCheckoutStep(1);
 
-    const stages = [
-      { delay: 1500, step: 2 }, // Stage 2: Validating physical vault balances
-      { delay: 3200, step: 3 }, // Stage 3: Packaging under Master Artisan supervision into luxury velvet liners
-      { delay: 5000, step: 4 }, // Stage 4: Locking armored logistics transport courier
-      { delay: 6800, step: 5 }  // Stage 5: Finalizing VIP Circle members ledger allocation
-    ];
+    try {
+      const response = await fetch("/api/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          buyer: formData,
+          items: cartItems,
+          subtotal,
+          tax: taxation,
+          delivery: secureDelivery,
+          total
+        })
+      });
 
-    stages.forEach(({ delay, step }) => {
-      setTimeout(() => {
-        setCheckoutStep(step);
-      }, delay);
-    });
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || "Registry allocation rejected by gateway.");
+      }
+
+      // Luxury high-end checkout simulation stages
+      const stages = [
+        { delay: 1500, step: 2 }, // Stage 2: Validating physical vault balances
+        { delay: 3200, step: 3 }, // Stage 3: Packaging under Master Artisan supervision into luxury velvet liners
+        { delay: 5000, step: 4 }, // Stage 4: Locking armored logistics transport courier
+        { delay: 6800, step: 5 }  // Stage 5: Finalizing VIP Circle members ledger allocation
+      ];
+
+      stages.forEach(({ delay, step }) => {
+        setTimeout(() => {
+          setCheckoutStep(step);
+        }, delay);
+      });
+
+    } catch (err: any) {
+      setCheckingOut(false);
+      setCheckoutStep(0);
+      setError(err.message || "Failed to secure transaction pathway.");
+    }
   };
 
   const finalizePurchase = () => {
     setCheckingOut(false);
     setCheckoutStep(0);
+    setShowForm(false);
     onClearCart();
     onClose();
   };
@@ -205,6 +268,93 @@ export default function CartDrawer({
                       )}
                     </AnimatePresence>
                   </div>
+                ) : showForm ? (
+                  /* Delivery Details Form */
+                  <form onSubmit={handleCheckoutSubmit} className="space-y-5 text-left">
+                    <div className="border-b border-gold-classic/10 pb-3 mb-2 flex items-center justify-between">
+                      <span className="text-[10px] tracking-[0.3em] text-gold-classic uppercase font-semibold font-cinzel">
+                        DELIVERY LEDGER REGISTRY
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setShowForm(false)}
+                        className="text-[10px] text-gray-400 hover:text-gold-classic transition-colors font-outfit uppercase tracking-wider cursor-pointer"
+                      >
+                        &larr; Velvet Drawer
+                      </button>
+                    </div>
+
+                    {error && (
+                      <div className="p-3 border border-red-500/25 bg-red-950/20 text-red-300 text-xs rounded-sm font-outfit">
+                        {error}
+                      </div>
+                    )}
+
+                    <div className="space-y-4 font-outfit text-xs text-left">
+                      <div className="space-y-1.5">
+                        <label className="text-gray-400 uppercase tracking-widest text-[9px] block">Full Name</label>
+                        <input
+                          type="text"
+                          required
+                          value={formData.name}
+                          onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                          className="w-full bg-plum-950/40 border border-gold-classic/10 focus:border-gold-classic/40 p-3 text-[#f5f0f5] rounded-sm outline-none placeholder-gray-600 font-outfit text-xs"
+                          placeholder="Your Premium VIP Name"
+                        />
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <label className="text-gray-400 uppercase tracking-widest text-[9px] block">Email Address</label>
+                        <input
+                          type="email"
+                          required
+                          value={formData.email}
+                          onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                          className="w-full bg-plum-950/40 border border-gold-classic/10 focus:border-gold-classic/40 p-3 text-[#f5f0f5] rounded-sm outline-none placeholder-gray-600 font-outfit text-xs"
+                          placeholder="vip@asteya.com"
+                        />
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <label className="text-gray-400 uppercase tracking-widest text-[9px] block">Phone Number</label>
+                        <input
+                          type="tel"
+                          required
+                          value={formData.phone}
+                          onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                          className="w-full bg-plum-950/40 border border-gold-classic/10 focus:border-gold-classic/40 p-3 text-[#f5f0f5] rounded-sm outline-none placeholder-gray-600 font-outfit text-xs"
+                          placeholder="+91 XXXXX XXXXX"
+                        />
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <label className="text-gray-400 uppercase tracking-widest text-[9px] block">Shipping Address</label>
+                        <textarea
+                          required
+                          rows={3}
+                          value={formData.address}
+                          onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                          className="w-full bg-plum-950/40 border border-gold-classic/10 focus:border-gold-classic/40 p-3 text-[#f5f0f5] rounded-sm outline-none placeholder-gray-600 resize-none font-outfit text-xs"
+                          placeholder="Boutique Doorstep Handover Destination"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="p-4 border border-gold-classic/5 bg-plum-900/10 rounded-sm mt-6">
+                      <div className="flex justify-between items-center text-xs">
+                        <span className="font-cinzel text-gray-400 tracking-wider">Total Valuation</span>
+                        <span className="text-gold-classic font-semibold text-sm font-outfit">{formatPrice(total)}</span>
+                      </div>
+                    </div>
+
+                    <button
+                      type="submit"
+                      className="w-full flex items-center justify-center gap-2.5 py-4 bg-gold-gradient text-plum-950 font-outfit text-xs tracking-[0.25em] uppercase font-bold hover:shadow-gold-glow transition-all rounded-sm cursor-pointer mt-4"
+                    >
+                      Authorize & Checkout
+                      <ArrowRight className="w-4 h-4" />
+                    </button>
+                  </form>
                 ) : cartItems.length === 0 ? (
                   /* Empty state */
                   <div className="h-full flex flex-col items-center justify-center text-center space-y-4 pt-16">
@@ -291,7 +441,7 @@ export default function CartDrawer({
               </div>
 
               {/* Order pricing summary footer summary */}
-              {!checkingOut && cartItems.length > 0 && (
+              {!checkingOut && !showForm && cartItems.length > 0 && (
                 <div className="p-6 border-t border-gold-classic/10 bg-plum-900/95 space-y-4">
                   <div className="space-y-2.5 text-xs text-gray-300 font-outfit">
                     <div className="flex justify-between">
@@ -320,7 +470,7 @@ export default function CartDrawer({
                   </div>
 
                   <button
-                    onClick={executeBespokeCheckout}
+                    onClick={handleStartCheckout}
                     className="w-full flex items-center justify-center gap-2.5 py-4 bg-gold-gradient text-plum-950 font-outfit text-xs tracking-[0.25em] uppercase font-bold hover:shadow-gold-glow transition-all rounded-sm cursor-pointer mt-2"
                   >
                     Lock Vault & Checkout

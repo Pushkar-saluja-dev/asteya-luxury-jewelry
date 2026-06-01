@@ -585,6 +585,7 @@ export default function App() {
         onRemoveItem={handleRemoveCartItem}
         onUpdateQuantity={handleUpdateCartQuantity}
         onClearCart={handleClearCart}
+        currentUser={currentUser}
       />
 
       {/* Wishlist Drawer */}

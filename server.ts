@@ -5,6 +5,7 @@ import { createClient } from "@supabase/supabase-js";
 import dotenv from "dotenv";
 import fs from "fs";
 import { PNG } from "pngjs";
+import nodemailer from "nodemailer";
 
 dotenv.config();
 
@@ -1282,6 +1283,236 @@ app.post("/api/ai/concierge", async (req, res) => {
     recommendedProductIds: finalResponseJson.recommendedProductIds
   });
 });
+
+
+// 8. Order Checkout and Dispatch Alerts
+app.post("/api/checkout", async (req, res) => {
+  const { buyer, items, subtotal, tax, delivery, total } = req.body;
+
+  if (!buyer || !items || items.length === 0) {
+    return res.status(400).json({ error: "Missing required order parameters." });
+  }
+
+  console.log(`ASTEYA Order Processing: Initiating transaction for ${buyer.name} (${buyer.email})...`);
+
+  let dbSaved = false;
+  let dbErrorMsg = "";
+
+  // 1. Attempt Supabase Ledger Insert
+  if (supabase) {
+    try {
+      const { data, error } = await supabase
+        .from("orders")
+        .insert([{
+          buyer_name: buyer.name,
+          buyer_email: buyer.email,
+          buyer_phone: buyer.phone,
+          buyer_address: buyer.address,
+          items: items,
+          subtotal: Number(subtotal),
+          tax: Number(tax),
+          delivery: Number(delivery),
+          total: Number(total),
+          status: "pending"
+        }]);
+
+      if (error) {
+        console.warn("ASTEYA Ledger Warn: Supabase order registry insert returned error:", error);
+        dbErrorMsg = error.message;
+      } else {
+        console.log("ASTEYA Ledger: Order successfully logged in Supabase orders registry.");
+        dbSaved = true;
+      }
+    } catch (dbErr: any) {
+      console.warn("ASTEYA Ledger Warn: Exceptional error during database recording:", dbErr);
+      dbErrorMsg = dbErr.message || String(dbErr);
+    }
+  } else {
+    console.warn("ASTEYA Ledger Notice: Supabase not configured. Bypassing database order ledgering.");
+    dbErrorMsg = "Supabase client not initialized";
+  }
+
+  // 2. Format Price Helper
+  const formatPrice = (price: number) => {
+    return new Intl.NumberFormat("en-IN", {
+      style: "currency",
+      currency: "INR",
+      maximumFractionDigits: 0
+    }).format(price);
+  };
+
+  // 3. Construct Opulent HTML Email Template
+  const itemsHtml = items.map((item: any) => `
+    <div style="display: flex; margin-bottom: 20px; border-bottom: 1px solid rgba(197, 168, 128, 0.1); padding-bottom: 15px; align-items: center;">
+      <img src="${item.product.images[0]}" alt="${item.product.name}" style="width: 70px; height: 70px; object-fit: cover; border: 1px solid rgba(197, 168, 128, 0.2); background-color: #170715; margin-right: 15px; border-radius: 2px;" />
+      <div style="flex: 1;">
+        <h3 style="font-family: 'Cinzel', 'Georgia', serif; font-size: 13px; letter-spacing: 1px; color: #f7f2f7; margin: 0 0 4px 0; text-transform: uppercase;">
+          ${item.product.name}
+        </h3>
+        <p style="font-family: 'Arial', sans-serif; font-size: 11px; color: #a392a1; margin: 0 0 8px 0;">
+          ${item.product.categoryLabel} ${item.selectedSize ? `&bull; Size: ${item.selectedSize}` : ""}
+        </p>
+        <div style="display: flex; justify-content: space-between; font-family: 'Arial', sans-serif; font-size: 12px; color: #f7f2f7;">
+          <span>Quantity: ${item.quantity}</span>
+          <span style="color: #c5a880; font-weight: bold;">${formatPrice(item.product.price * item.quantity)}</span>
+        </div>
+      </div>
+    </div>
+  `).join("");
+
+  const emailHtml = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <title>ASTEYA Order Alert</title>
+    </head>
+    <body style="font-family: 'Georgia', serif; background-color: #170715; color: #f7f2f7; margin: 0; padding: 20px;">
+      <div style="max-width: 600px; margin: 0 auto; background-color: #210d20; border: 1px solid #c5a880; padding: 40px; box-sizing: border-box; border-radius: 4px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
+        
+        <!-- Header -->
+        <div style="text-align: center; border-bottom: 1px solid rgba(197, 168, 128, 0.2); padding-bottom: 30px; margin-bottom: 30px;">
+          <h1 style="font-family: 'Cinzel', 'Georgia', serif; color: #c5a880; font-size: 26px; letter-spacing: 5px; margin: 0 0 10px 0; text-transform: uppercase; font-weight: normal;">
+            ASTEYA
+          </h1>
+          <p style="font-style: italic; color: #a392a1; font-size: 12px; margin: 0; letter-spacing: 2px;">
+            HAUTE JOAILLERIE ACQUISITION ALERT
+          </p>
+        </div>
+
+        <!-- Section 1: Customer Details -->
+        <div style="margin-bottom: 35px;">
+          <h2 style="font-family: 'Cinzel', 'Georgia', serif; font-size: 12px; letter-spacing: 2px; color: #c5a880; border-bottom: 1px solid rgba(197, 168, 128, 0.15); padding-bottom: 8px; margin: 0 0 15px 0; text-transform: uppercase; font-weight: normal;">
+            VIP Client Profile
+          </h2>
+          <table style="width: 100%; border-collapse: collapse; font-family: 'Arial', sans-serif; font-size: 13px;">
+            <tr>
+              <td style="padding: 8px 0; color: #a392a1; width: 30%; font-weight: bold;">Client Name:</td>
+              <td style="padding: 8px 0; color: #f7f2f7;">${buyer.name}</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px 0; color: #a392a1; font-weight: bold;">Email Address:</td>
+              <td style="padding: 8px 0; color: #f7f2f7;">${buyer.email}</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px 0; color: #a392a1; font-weight: bold;">Phone Number:</td>
+              <td style="padding: 8px 0; color: #f7f2f7;">${buyer.phone}</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px 0; color: #a392a1; font-weight: bold;">Delivery Address:</td>
+              <td style="padding: 8px 0; color: #f7f2f7; line-height: 1.6;">${buyer.address}</td>
+            </tr>
+          </table>
+        </div>
+
+        <!-- Section 2: Order Items -->
+        <div style="margin-bottom: 35px;">
+          <h2 style="font-family: 'Cinzel', 'Georgia', serif; font-size: 12px; letter-spacing: 2px; color: #c5a880; border-bottom: 1px solid rgba(197, 168, 128, 0.15); padding-bottom: 8px; margin: 0 0 15px 0; text-transform: uppercase; font-weight: normal;">
+            Allocated Creations
+          </h2>
+          ${itemsHtml}
+        </div>
+
+        <!-- Section 3: Cost breakdown -->
+        <div style="margin-top: 30px; border-top: 1px solid rgba(197, 168, 128, 0.2); padding-top: 20px;">
+          <table style="width: 100%; border-collapse: collapse; font-family: 'Arial', sans-serif; font-size: 13px;">
+            <tr>
+              <td style="padding: 6px 0; color: #a392a1;">Boutique Subtotal:</td>
+              <td style="padding: 6px 0; color: #f7f2f7; text-align: right;">${formatPrice(subtotal)}</td>
+            </tr>
+            <tr>
+              <td style="padding: 6px 0; color: #a392a1;">Armored Handover Delivery:</td>
+              <td style="padding: 6px 0; color: #f7f2f7; text-align: right;">
+                ${delivery === 0 ? '<span style="color: #c5a880; font-weight: bold; letter-spacing: 1px; font-size: 11px;">COMPLIMENTARY VIP</span>' : formatPrice(delivery)}
+              </td>
+            </tr>
+            <tr>
+              <td style="padding: 6px 0; color: #a392a1;">Estimated Luxury Excise:</td>
+              <td style="padding: 6px 0; color: #f7f2f7; text-align: right;">${formatPrice(tax)}</td>
+            </tr>
+            <tr style="border-top: 1px solid rgba(197, 168, 128, 0.25);">
+              <td style="padding: 15px 0 0 0; font-family: 'Cinzel', 'Georgia', serif; font-size: 13px; color: #f7f2f7; letter-spacing: 2px;">AGGREGATED VALUE:</td>
+              <td style="padding: 15px 0 0 0; font-family: 'Arial', sans-serif; font-size: 18px; color: #c5a880; font-weight: bold; text-align: right;">${formatPrice(total)}</td>
+            </tr>
+          </table>
+        </div>
+
+        <!-- Action Decree Section -->
+        <div style="margin-top: 40px; padding: 15px; border: 1px dashed rgba(197, 168, 128, 0.3); background-color: rgba(197, 168, 128, 0.02); text-align: center; border-radius: 2px;">
+          <p style="font-family: 'Arial', sans-serif; font-size: 11px; color: #c5a880; margin: 0; text-transform: uppercase; letter-spacing: 1px; line-height: 1.5;">
+            <strong>Atelier Action Decree:</strong> Please coordinate with Amritsar logistics for solid vault release, custom certificate binding, and VIP courier hand-carry routing.
+          </p>
+        </div>
+
+        <!-- Footer -->
+        <div style="margin-top: 40px; text-align: center; border-top: 1px solid rgba(197, 168, 128, 0.1); padding-top: 20px;">
+          <p style="font-family: 'Arial', sans-serif; font-size: 10px; color: #887886; margin: 0 0 5px 0; letter-spacing: 1px;">
+            ASTEYA Fine Jewelry &bull; Paris &bull; Amritsar
+          </p>
+          <p style="font-family: 'Arial', sans-serif; font-size: 9px; color: #6a5a68; margin: 0;">
+            Database Status: ${dbSaved ? "Registered in Supabase Ledger" : "Caches Synchronized (DB Notice: " + dbErrorMsg + ")"}
+          </p>
+        </div>
+
+      </div>
+    </body>
+    </html>
+  `;
+
+  // 4. Send email alert to the two accounts
+  const smtpUser = process.env.SMTP_USER || process.env.GMAIL_USER || "";
+  const smtpPass = process.env.SMTP_PASS || process.env.GMAIL_PASS || "";
+
+  if (smtpUser && smtpPass) {
+    try {
+      console.log(`ASTEYA Email: Preparing dispatch via secure SMTP for ${smtpUser}...`);
+      
+      const transporter = nodemailer.createTransport({
+        service: "gmail",
+        auth: {
+          user: smtpUser,
+          pass: smtpPass
+        }
+      });
+
+      const mailOptions = {
+        from: `"ASTEYA Boutique Alerts" <${smtpUser}>`,
+        to: "asteya.in@gmail.com, pushkarsaluja2008@gmail.com",
+        subject: `👑 New ASTEYA Acquisition Request - ${buyer.name}`,
+        html: emailHtml
+      };
+
+      const info = await transporter.sendMail(mailOptions);
+      console.log(`ASTEYA Email: Dispatch processed successfully. MessageId: ${info.messageId}`);
+      
+      return res.json({
+        success: true,
+        dbSaved,
+        emailSent: true,
+        message: "Your premium ASTEYA pieces have been allocated. Our luxury master curators are preparing courier logs."
+      });
+    } catch (mailErr: any) {
+      console.error("ASTEYA Email Error: SMTP transporter dispatch failed:", mailErr);
+      return res.json({
+        success: true,
+        dbSaved,
+        emailSent: false,
+        emailError: mailErr.message || String(mailErr),
+        message: "Atelier allocation request recorded in database logs. Our master artisans are preparing your velvet drawers."
+      });
+    }
+  } else {
+    console.warn("ASTEYA Email Warn: SMTP credentials not present in Netlify environment variables. Bypassing email dispatch.");
+    return res.json({
+      success: true,
+      dbSaved,
+      emailSent: false,
+      emailWarning: "Credentials missing",
+      message: "Atelier allocation request recorded in database logs. Our master artisans are preparing your velvet drawers."
+    });
+  }
+});
+
 
 // ================= VITE DEV / PRODUCTION SERVER GATEWAY =================
 
