@@ -539,12 +539,46 @@ export default function ProductDetailModal({
                       exit={{ height: 0, opacity: 0 }}
                       className="text-xs font-outfit text-gray-300 p-4 divide-y divide-gold-classic/5"
                     >
-                      {Object.entries(product.specifications).map(([key, val]) => (
-                        <div key={key} className="flex justify-between py-2.5">
-                          <span className="text-gray-400 font-light tracking-[0.05em]">{key}</span>
-                          <span className="text-right text-gold-pale max-w-xs">{val}</span>
-                        </div>
-                      ))}
+                      {Object.entries(product.specifications || {})
+                        .filter(([key]) => {
+                          const k = key.toLowerCase();
+                          // Filter out gemstone and carat related specs since asteya is artificial jewelry
+                          if (
+                            k.includes("gem") ||
+                            k.includes("stone") ||
+                            k.includes("cut") ||
+                            k.includes("crystal") ||
+                            k.includes("emerald") ||
+                            k.includes("amethyst") ||
+                            k.includes("diamond") ||
+                            k.includes("carat")
+                          ) {
+                            return false;
+                          }
+                          // Hide technical config URLs
+                          if (k.includes("try_on") || k.includes("mtl") || k.includes("model_url")) {
+                            return false;
+                          }
+                          // Only allow clean standard curator fields or valid custom keys
+                          return (
+                            k.includes("reference") ||
+                            k.includes("metal") ||
+                            k.includes("purity") ||
+                            k.includes("weight") ||
+                            k.includes("quality") ||
+                            k.includes("length") ||
+                            k.includes("width") ||
+                            k.includes("breadth") ||
+                            // or generic clean custom keys
+                            (!k.includes("_url") && !k.startsWith("physical_"))
+                          );
+                        })
+                        .map(([key, val]) => (
+                          <div key={key} className="flex justify-between py-2.5">
+                            <span className="text-gray-400 font-light tracking-[0.05em]">{key}</span>
+                            <span className="text-right text-gold-pale max-w-xs">{val}</span>
+                          </div>
+                        ))}
                     </motion.div>
                   )}
                 </AnimatePresence>
