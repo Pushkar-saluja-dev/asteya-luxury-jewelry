@@ -21,6 +21,7 @@ interface ThreeDViewerProps {
 function ThreeDViewer({ url, name }: ThreeDViewerProps) {
   const ModelViewerElement = "model-viewer" as any;
   const [loading, setLoading] = useState(true);
+  const [progress, setProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const viewerRef = useRef<HTMLElement>(null);
 
@@ -30,19 +31,28 @@ function ThreeDViewer({ url, name }: ThreeDViewerProps) {
 
     // Reset state on url changes
     setLoading(true);
+    setProgress(0);
     setError(null);
 
     const handleLoad = () => {
       setLoading(false);
     };
 
-    const handleError = () => {
-      setError("Failed to load 3D model.");
+    const handleError = (e: any) => {
+      console.error("Model failed to load:", e);
+      const errType = e?.detail?.type || "unknown";
+      setError(`Failed to load 3D model (Error: ${errType}).`);
       setLoading(false);
+    };
+
+    const handleProgress = (e: any) => {
+      const totalProgress = e?.detail?.totalProgress || 0;
+      setProgress(Math.round(totalProgress * 100));
     };
 
     el.addEventListener("load", handleLoad);
     el.addEventListener("error", handleError);
+    el.addEventListener("progress", handleProgress);
 
     // Guard: check if the model is already loaded
     if ((el as any).loaded) {
@@ -52,18 +62,22 @@ function ThreeDViewer({ url, name }: ThreeDViewerProps) {
     return () => {
       el.removeEventListener("load", handleLoad);
       el.removeEventListener("error", handleError);
+      el.removeEventListener("progress", handleProgress);
     };
   }, [url]);
 
   return (
     <div className="w-full h-full relative flex items-center justify-center bg-transparent">
       {loading && (
-        <div className="absolute inset-0 flex items-center justify-center bg-plum-950/20 z-10">
-          <div className="w-8 h-8 border border-gold-classic/20 border-t-gold-classic rounded-full animate-spin" />
+        <div className="absolute inset-0 flex flex-col items-center justify-center bg-plum-950/40 z-10 gap-3">
+          <div className="w-10 h-10 border border-gold-classic/20 border-t-gold-classic rounded-full animate-spin" />
+          <div className="font-outfit text-[10px] tracking-[0.2em] text-gold-pale uppercase font-medium">
+            Loading 3D Render: {progress}%
+          </div>
         </div>
       )}
       {error && (
-        <div className="absolute inset-0 flex items-center justify-center bg-plum-950/40 text-red-400 font-outfit text-xs text-center p-4 z-10">
+        <div className="absolute inset-0 flex items-center justify-center bg-plum-950/60 text-red-400 font-outfit text-xs text-center p-4 z-10">
           {error}
         </div>
       )}
