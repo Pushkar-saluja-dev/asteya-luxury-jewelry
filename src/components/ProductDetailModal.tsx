@@ -1,11 +1,6 @@
 import { useState, useRef, MouseEvent, useEffect } from "react";
 import { X, ShoppingBag, Sparkles, Heart, ShieldCheck, HelpCircle, Box } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
-import * as THREE from "three";
-import { OBJLoader } from "three/examples/jsm/loaders/OBJLoader.js";
-import { MTLLoader } from "three/examples/jsm/loaders/MTLLoader.js";
-import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
-import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { Product } from "../types";
 
 interface ProductDetailModalProps {
@@ -20,218 +15,16 @@ interface ProductDetailModalProps {
 
 interface ThreeDViewerProps {
   url: string;
-  mtlUrl?: string;
   name: string;
 }
 
-function ThreeDViewer({ url, mtlUrl, name }: ThreeDViewerProps) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+function ThreeDViewer({ url, name }: ThreeDViewerProps) {
+  const ModelViewerElement = "model-viewer" as any;
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!canvasRef.current || !containerRef.current) return;
-
-    let active = true;
-    let renderer: THREE.WebGLRenderer | null = null;
-    let controls: OrbitControls | null = null;
-    let animationFrameId: number;
-
-    const width = containerRef.current.clientWidth || 400;
-    const height = containerRef.current.clientHeight || 400;
-
-    // 1. Create Scene & Camera
-    const scene = new THREE.Scene();
-    scene.background = null; // Transparent background
-
-    const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
-    camera.position.set(0, 0, 10);
-
-    // 2. WebGL Renderer
-    renderer = new THREE.WebGLRenderer({
-      canvas: canvasRef.current,
-      alpha: true,
-      antialias: true
-    });
-    renderer.setSize(width, height);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-
-    // 3. Orbit Controls
-    controls = new OrbitControls(camera, renderer.domElement);
-    controls.enableDamping = true;
-    controls.dampingFactor = 0.05;
-    controls.autoRotate = true;
-    controls.autoRotateSpeed = 1.5;
-
-    // 4. Lights
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
-    scene.add(ambientLight);
-
-    const dirLight1 = new THREE.DirectionalLight(0xffffff, 1.0);
-    dirLight1.position.set(5, 10, 7);
-    scene.add(dirLight1);
-
-    const dirLight2 = new THREE.DirectionalLight(0xffe3a0, 0.6); // Warm golden highlight light
-    dirLight2.position.set(-5, -5, -5);
-    scene.add(dirLight2);
-
-    const isOBJ = url.toLowerCase().includes(".obj") || 
-                  url.startsWith("data:text/plain") || 
-                  url.startsWith("data:application/octet-stream;base64");
-
-    // 5. Centering & Auto-scaling helper
-    const handleModelLoad = (loadedObject: THREE.Object3D) => {
-      if (!active) return;
-
-      const box = new THREE.Box3().setFromObject(loadedObject);
-      const center = box.getCenter(new THREE.Vector3());
-      const size = box.getSize(new THREE.Vector3());
-
-      // Center the object geometry relative to origin
-      loadedObject.position.x -= center.x;
-      loadedObject.position.y -= center.y;
-      loadedObject.position.z -= center.z;
-
-      // Adjust camera to fit the object boundaries perfectly
-      const maxDim = Math.max(size.x, size.y, size.z);
-      const fov = camera.fov * (Math.PI / 180);
-      let cameraZ = Math.abs(maxDim / (2 * Math.tan(fov / 2)));
-      cameraZ *= 1.5; // Premium fitting safety padding multiplier
-      
-      camera.position.set(0, 0, cameraZ > 0 ? cameraZ : 10);
-      camera.lookAt(new THREE.Vector3(0, 0, 0));
-
-      const minZ = box.min.z;
-      const cameraToFarEdge = (camera.position.z - minZ) * 3;
-      camera.far = cameraToFarEdge > 0 ? cameraToFarEdge : 1000;
-      camera.updateProjectionMatrix();
-
-      // Adjust controls target to center
-      if (controls) {
-        controls.target.set(0, 0, 0);
-        controls.update();
-      }
-
-      scene.add(loadedObject);
-      setLoading(false);
-    };
-
-    if (isOBJ) {
-      const loadOBJ = (materials: any = null) => {
-        const loader = new OBJLoader();
-        if (materials) {
-          loader.setMaterials(materials);
-        }
-        
-        loader.load(
-          url,
-          (obj) => {
-            if (!materials) {
-              // Apply a premium luxury gold material to all meshes ONLY if no MTL was supplied!
-              const luxuryMaterial = new THREE.MeshStandardMaterial({
-                color: 0xd4af37, // Gold classic
-                metalness: 0.95,
-                roughness: 0.15
-              });
-
-              obj.traverse((child) => {
-                if (child instanceof THREE.Mesh) {
-                  child.material = luxuryMaterial;
-                }
-              });
-            }
-            handleModelLoad(obj);
-          },
-          undefined,
-          (err) => {
-            console.error("Error loading OBJ model:", err);
-            if (active) {
-              setError("Failed to load 3D OBJ model.");
-              setLoading(false);
-            }
-          }
-        );
-      };
-
-      if (mtlUrl) {
-        const mtlLoader = new MTLLoader();
-        mtlLoader.load(
-          mtlUrl,
-          (materials) => {
-            materials.preload();
-            loadOBJ(materials);
-          },
-          undefined,
-          (err) => {
-            console.error("Error loading MTL materials:", err);
-            // Fall back to loading the OBJ without materials (and applying the luxury gold shader!)
-            loadOBJ(null);
-          }
-        );
-      } else {
-        loadOBJ(null);
-      }
-    } else {
-      const loader = new GLTFLoader();
-      loader.load(
-        url,
-        (gltf) => {
-          handleModelLoad(gltf.scene);
-        },
-        undefined,
-        (err) => {
-          console.error("Error loading GLTF/GLB model:", err);
-          if (active) {
-            setError("Failed to load 3D GLB model.");
-            setLoading(false);
-          }
-        }
-      );
-    }
-
-    // 6. Animation Loop
-    const tick = () => {
-      if (!active) return;
-
-      if (controls) {
-        controls.update();
-      }
-
-      if (renderer) {
-        renderer.render(scene, camera);
-      }
-
-      animationFrameId = requestAnimationFrame(tick);
-    };
-
-    tick();
-
-    // 7. Handle Resize
-    const handleResize = () => {
-      if (!containerRef.current || !renderer || !camera) return;
-      const w = containerRef.current.clientWidth;
-      const h = containerRef.current.clientHeight;
-
-      camera.aspect = w / h;
-      camera.updateProjectionMatrix();
-
-      renderer.setSize(w, h);
-    };
-
-    window.addEventListener("resize", handleResize);
-
-    // Cleanups
-    return () => {
-      active = false;
-      cancelAnimationFrame(animationFrameId);
-      window.removeEventListener("resize", handleResize);
-      if (renderer) renderer.dispose();
-    };
-  }, [url]);
-
   return (
-    <div ref={containerRef} className="w-full h-full relative flex items-center justify-center bg-transparent">
+    <div className="w-full h-full relative flex items-center justify-center bg-transparent">
       {loading && (
         <div className="absolute inset-0 flex items-center justify-center bg-plum-950/20 z-10">
           <div className="w-8 h-8 border border-gold-classic/20 border-t-gold-classic rounded-full animate-spin" />
@@ -242,7 +35,23 @@ function ThreeDViewer({ url, mtlUrl, name }: ThreeDViewerProps) {
           {error}
         </div>
       )}
-      <canvas ref={canvasRef} className="w-full h-full cursor-grab active:cursor-grabbing block" />
+      <ModelViewerElement
+        src={url}
+        alt={name}
+        auto-rotate
+        camera-controls
+        shadow-intensity="1.5"
+        exposure="1.2"
+        shadow-softness="1"
+        environment-image="neutral"
+        style={{ width: "100%", height: "100%", backgroundColor: "transparent" }}
+        className="w-full h-full cursor-grab active:cursor-grabbing block"
+        onLoad={() => setLoading(false)}
+        onError={() => {
+          setError("Failed to load 3D model.");
+          setLoading(false);
+        }}
+      />
     </div>
   );
 }
@@ -395,7 +204,7 @@ export default function ProductDetailModal({
                 /* Native 3D model-viewer integration */
                 <div className="w-full h-full relative">
                   {product.modelUrl ? (
-                    <ThreeDViewer url={product.modelUrl} mtlUrl={product.mtlUrl} name={product.name} />
+                    <ThreeDViewer url={product.modelUrl} name={product.name} />
                   ) : (
                     <ThreeDViewer url="https://modelviewer.dev/shared-assets/models/glTF-Sample-Assets/Models/ToyCar/glTF/ToyCar.gltf" name={product.name} />
                   )}
