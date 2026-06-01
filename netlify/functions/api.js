@@ -102440,29 +102440,35 @@ app.post("/api/checkout", async (req, res) => {
       maximumFractionDigits: 0
     }).format(price);
   };
-  const itemsHtml = items.map((item) => `
-    <table width="100%" style="margin-bottom: 20px; border-bottom: 1px solid rgba(197, 168, 128, 0.1); padding-bottom: 15px; border-collapse: collapse;">
-      <tr>
-        <td width="70" style="vertical-align: middle; padding-right: 15px;">
-          <img src="${item.product.images[0]}" alt="${item.product.name}" width="70" height="70" style="display: block; object-fit: cover; border: 1px solid rgba(197, 168, 128, 0.2); background-color: #170715; border-radius: 2px;" />
-        </td>
-        <td style="vertical-align: middle;">
-          <h3 style="font-family: 'Cinzel', 'Georgia', serif; font-size: 13px; letter-spacing: 1px; color: #f7f2f7; margin: 0 0 4px 0; text-transform: uppercase; font-weight: normal;">
-            ${item.product.name}
-          </h3>
-          <p style="font-family: 'Arial', sans-serif; font-size: 11px; color: #a392a1; margin: 0 0 8px 0;">
-            ${item.product.categoryLabel || "Jewelry Ateliers"} ${item.selectedSize ? `&bull; Size: ${item.selectedSize}` : ""}
-          </p>
-          <table width="100%" style="border-collapse: collapse; font-family: 'Arial', sans-serif; font-size: 12px; color: #f7f2f7;">
-            <tr>
-              <td style="color: #a392a1; font-family: 'Arial', sans-serif;">Quantity: ${item.quantity}</td>
-              <td style="text-align: right; color: #c5a880; font-weight: bold; font-family: 'Arial', sans-serif;">${formatPrice(item.product.price * item.quantity)}</td>
-            </tr>
-          </table>
-        </td>
-      </tr>
-    </table>
-  `).join("");
+  const itemsHtml = items.map((item) => {
+    let imgSrc = item.product.images && item.product.images[0] ? item.product.images[0] : "";
+    if (imgSrc && imgSrc.startsWith("data:image")) {
+      imgSrc = "https://images.unsplash.com/photo-1605100804763-247f67b3557e?auto=format&fit=crop&q=80&w=300";
+    }
+    return `
+      <table width="100%" style="margin-bottom: 20px; border-bottom: 1px solid rgba(197, 168, 128, 0.1); padding-bottom: 15px; border-collapse: collapse;">
+        <tr>
+          <td width="70" style="vertical-align: middle; padding-right: 15px;">
+            <img src="${imgSrc}" alt="${item.product.name}" width="70" height="70" style="display: block; object-fit: cover; border: 1px solid rgba(197, 168, 128, 0.2); background-color: #170715; border-radius: 2px;" />
+          </td>
+          <td style="vertical-align: middle;">
+            <h3 style="font-family: 'Cinzel', 'Georgia', serif; font-size: 13px; letter-spacing: 1px; color: #f7f2f7; margin: 0 0 4px 0; text-transform: uppercase; font-weight: normal;">
+              ${item.product.name}
+            </h3>
+            <p style="font-family: 'Arial', sans-serif; font-size: 11px; color: #a392a1; margin: 0 0 8px 0;">
+              ${item.product.categoryLabel || "Jewelry Ateliers"} ${item.selectedSize ? `&bull; Size: ${item.selectedSize}` : ""}
+            </p>
+            <table width="100%" style="border-collapse: collapse; font-family: 'Arial', sans-serif; font-size: 12px; color: #f7f2f7;">
+              <tr>
+                <td style="color: #a392a1; font-family: 'Arial', sans-serif;">Quantity: ${item.quantity}</td>
+                <td style="text-align: right; color: #c5a880; font-weight: bold; font-family: 'Arial', sans-serif;">${formatPrice(item.product.price * item.quantity)}</td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+      </table>
+    `;
+  }).join("");
   const emailHtml = `
     <!DOCTYPE html>
     <html>
