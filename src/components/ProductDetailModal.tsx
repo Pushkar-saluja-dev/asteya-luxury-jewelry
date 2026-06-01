@@ -22,6 +22,38 @@ function ThreeDViewer({ url, name }: ThreeDViewerProps) {
   const ModelViewerElement = "model-viewer" as any;
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const viewerRef = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    const el = viewerRef.current;
+    if (!el) return;
+
+    // Reset state on url changes
+    setLoading(true);
+    setError(null);
+
+    const handleLoad = () => {
+      setLoading(false);
+    };
+
+    const handleError = () => {
+      setError("Failed to load 3D model.");
+      setLoading(false);
+    };
+
+    el.addEventListener("load", handleLoad);
+    el.addEventListener("error", handleError);
+
+    // Guard: check if the model is already loaded
+    if ((el as any).loaded) {
+      setLoading(false);
+    }
+
+    return () => {
+      el.removeEventListener("load", handleLoad);
+      el.removeEventListener("error", handleError);
+    };
+  }, [url]);
 
   return (
     <div className="w-full h-full relative flex items-center justify-center bg-transparent">
@@ -36,6 +68,7 @@ function ThreeDViewer({ url, name }: ThreeDViewerProps) {
         </div>
       )}
       <ModelViewerElement
+        ref={viewerRef}
         src={url}
         alt={name}
         auto-rotate
@@ -46,11 +79,6 @@ function ThreeDViewer({ url, name }: ThreeDViewerProps) {
         environment-image="neutral"
         style={{ width: "100%", height: "100%", backgroundColor: "transparent" }}
         className="w-full h-full cursor-grab active:cursor-grabbing block"
-        onLoad={() => setLoading(false)}
-        onError={() => {
-          setError("Failed to load 3D model.");
-          setLoading(false);
-        }}
       />
     </div>
   );
