@@ -555,7 +555,10 @@ export default function ProductDetailModal({
             <div className="flex flex-col sm:flex-row gap-4.5 pt-6 border-t border-gold-classic/10">
               {/* Add to Velvet box (add to cart) */}
               <button
-                onClick={() => onAddToCart(product, product.category === "rings" ? selectedSize : undefined)}
+                onClick={() => {
+                  onAddToCart(product, product.category === "rings" ? selectedSize : undefined);
+                  onClose();
+                }}
                 className="flex-1 flex items-center justify-center gap-3 py-4 bg-gold-gradient text-plum-950 font-outfit text-xs tracking-[0.25em] uppercase font-bold hover:shadow-gold-glow transition-all duration-300 rounded-sm cursor-pointer border border-transparent"
               >
                 <ShoppingBag className="w-4 h-4" />
