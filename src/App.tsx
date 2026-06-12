@@ -1,6 +1,6 @@
-import { useState, useEffect } from "react";
-import { Search, SlidersHorizontal, ArrowUpDown, ShieldCheck, Sparkles, AlertCircle } from "lucide-react";
-import { motion, AnimatePresence } from "motion/react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
+import { Search, SlidersHorizontal, ArrowUpDown, ShieldCheck, Sparkles, AlertCircle, Diamond, Zap } from "lucide-react";
+import { motion, AnimatePresence, useScroll, useTransform } from "motion/react";
 
 import Header from "./components/Header";
 import Hero from "./components/Hero";
@@ -13,40 +13,66 @@ import AtelierStacker from "./components/AtelierStacker";
 import VIPCircle from "./components/VIPCircle";
 import AdminDashboard from "./components/AdminDashboard";
 import AIAestheticConcierge from "./components/AIAestheticConcierge";
+import ParticleSystem from "./components/ParticleSystem";
 import { checkIsAdmin } from "./lib/admin";
-
 
 import { Product, CartItem, User } from "./types";
 
-export default function App() {
-  // Navigation tabs: 'catalog', 'tryon', 'vip'
-  const [activeTab, setActiveTab] = useState<string>("catalog");
+// Scroll-reveal wrapper component
+function ScrollReveal({ children, delay = 0, className = "" }: { children: React.ReactNode; delay?: number; className?: string }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [isVisible, setIsVisible] = useState(false);
 
-  // Main state managers
+  useEffect(() => {
+    const element = ref.current;
+    if (!element) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setIsVisible(true);
+          observer.unobserve(element);
+        }
+      },
+      { threshold: 0.1, rootMargin: "-50px" }
+    );
+
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, []);
+
+  return (
+    <div
+      ref={ref}
+      className={`${className} transition-all duration-1000 ease-out`}
+      style={{
+        opacity: isVisible ? 1 : 0,
+        transform: isVisible ? "translateY(0)" : "translateY(60px)",
+        transitionDelay: `${delay}ms`
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
+export default function App() {
+  const [activeTab, setActiveTab] = useState<string>("catalog");
   const [products, setProducts] = useState<Product[]>([]);
   const [loadingProducts, setLoadingProducts] = useState(true);
   const [productsError, setProductsError] = useState<string | null>(null);
-
-  // Cart & Wishlist state
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [wishlistItems, setWishlistItems] = useState<Product[]>([]);
-
-  // Auth User Account state
   const [currentUser, setCurrentUser] = useState<User | null>(null);
-
-  // Drawers & Modals triggering hooks
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isWishlistOpen, setIsWishlistOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [activeDetailProduct, setActiveDetailProduct] = useState<Product | null>(null);
-
-  // Filters state criteria
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [selectedCollection, setSelectedCollection] = useState<string>("all");
   const [sortBy, setSortBy] = useState<string>("default");
 
-  // Load from database endpoints and sync localStorage
   useEffect(() => {
     fetchProducts();
     loadPersistedUser();
@@ -64,7 +90,6 @@ export default function App() {
       }
     } catch (err) {
       console.warn("ASTEYA Core NOTICE: Offline fallback product dataset engaged.", err);
-      // Fallback local products so it builds and displays fine even if dev server is restarting!
       const fallbackProducts: Product[] = [
         {
           id: "prod-1",
@@ -152,7 +177,6 @@ export default function App() {
     if (savedProfile) {
       setCurrentUser(JSON.parse(savedProfile));
     } else {
-      // Default GUEST VIP entry allocation placeholder
       const guestVIP: User = {
         id: "usr-guest",
         name: "Exclusive Guest Finder",
@@ -165,7 +189,6 @@ export default function App() {
     }
   };
 
-  // Helper sync states to LocalStorage
   const syncCart = (items: CartItem[]) => {
     setCartItems(items);
     localStorage.setItem("asteya_cart", JSON.stringify(items));
@@ -176,7 +199,6 @@ export default function App() {
     localStorage.setItem("asteya_wishlist", JSON.stringify(items));
   };
 
-  // Cart action controllers
   const handleAddToCart = (product: Product, size?: string) => {
     const isAlready = cartItems.findIndex(
       (item) => item.product.id === product.id && item.selectedSize === size
@@ -189,9 +211,8 @@ export default function App() {
       updatedCart.push({ product, quantity: 1, selectedSize: size });
     }
     syncCart(updatedCart);
-    setIsCartOpen(true); // Open drawer instantly on add!
-    
-    // Auto-increase user points for loyalty!
+    setIsCartOpen(true);
+
     if (currentUser) {
       const updatedUser = { ...currentUser, points: currentUser.points + 100 };
       setCurrentUser(updatedUser);
@@ -226,7 +247,6 @@ export default function App() {
     syncCart([]);
   };
 
-  // Wishlist controls
   const handleToggleWishlist = (product: Product) => {
     const existIdx = wishlistItems.findIndex((item) => item.id === product.id);
     let updated = [...wishlistItems];
@@ -253,37 +273,39 @@ export default function App() {
     localStorage.setItem("asteya_user", JSON.stringify(newUser));
   };
 
-
   const handleLogout = () => {
     setCurrentUser(null);
     localStorage.removeItem("asteya_user");
   };
 
-  // Filter Catalog logic
-  const filteredProducts = products.filter((p) => {
-    const matchSearch =
-      p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      p.materials.some((m) => m.toLowerCase().includes(searchQuery.toLowerCase())) ||
-      p.collection.toLowerCase().includes(searchQuery.toLowerCase());
+  const filteredProducts = useMemo(() => {
+    return products.filter((p) => {
+      const matchSearch =
+        p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        p.materials.some((m) => m.toLowerCase().includes(searchQuery.toLowerCase())) ||
+        p.collection.toLowerCase().includes(searchQuery.toLowerCase());
 
-    const matchCat = selectedCategory === "all" || p.category === selectedCategory;
-    const matchColl = selectedCollection === "all" || p.collection === selectedCollection;
+      const matchCat = selectedCategory === "all" || p.category === selectedCategory;
+      const matchColl = selectedCollection === "all" || p.collection === selectedCollection;
 
-    return matchSearch && matchCat && matchColl;
-  });
+      return matchSearch && matchCat && matchColl;
+    });
+  }, [products, searchQuery, selectedCategory, selectedCollection]);
 
-  // Sort logic criteria
-  const sortedProducts = [...filteredProducts].sort((a, b) => {
-    if (sortBy === "priceAsc") return a.price - b.price;
-    if (sortBy === "priceDesc") return b.price - a.price;
-    if (sortBy === "alphabetical") return a.name.localeCompare(b.name);
-    return 0; // default
-  });
+  const sortedProducts = useMemo(() => {
+    return [...filteredProducts].sort((a, b) => {
+      if (sortBy === "priceAsc") return a.price - b.price;
+      if (sortBy === "priceDesc") return b.price - a.price;
+      if (sortBy === "alphabetical") return a.name.localeCompare(b.name);
+      return 0;
+    });
+  }, [filteredProducts, sortBy]);
 
   return (
     <div className="min-h-screen bg-plum-950 text-[#f7f2f7] font-sans antialiased overflow-x-hidden selection:bg-gold-classic selection:text-plum-950">
-      
-      {/* GLOBAL NAVBAR HEADER */}
+      {/* Background Particle System */}
+      <ParticleSystem particleCount={30} particleType="mixed" speed="slow" direction="random" colorScheme="gold" className="pointer-events-none" />
+
       <Header
         cartCount={cartItems.reduce((acc, item) => acc + item.quantity, 0)}
         wishlistCount={wishlistItems.length}
@@ -295,7 +317,6 @@ export default function App() {
         onOpenVIP={() => setActiveTab("vip")}
       />
 
-      {/* RENDER ACTIVE TAB VIEW MODULE (Strict separation of concerns) */}
       <main className="relative z-10">
         <AnimatePresence mode="wait">
           {activeTab === "catalog" && (
@@ -306,118 +327,197 @@ export default function App() {
               exit={{ opacity: 0 }}
               transition={{ duration: 0.5 }}
             >
-              {/* Cinematic introductory banner */}
               <Hero onExplore={() => {
                 const galleryNode = document.getElementById("galleryAtelier");
                 if (galleryNode) galleryNode.scrollIntoView({ behavior: "smooth" });
               }} />
 
-              {/* PRODUCT GRID & ATELIER PORTFOLIO */}
               <section id="galleryAtelier" className="max-w-7xl mx-auto px-6 py-24 scroll-mt-20">
-                <div className="flex flex-col lg:flex-row justify-between items-start lg:items-end mb-12 gap-6 border-b border-gold-classic/10 pb-8">
-                  <div>
-                    <span className="text-[10px] tracking-[0.4em] text-gold-classic uppercase font-outfit font-semibold block mb-2">
-                      ATELIER GALLERY
-                    </span>
-                    <h2 className="font-cinzel text-2xl sm:text-4xl tracking-widest text-[#f5f0f5] uppercase font-bold">
-                      FINE JOAILLERIE COLLECTIONS
-                    </h2>
-                  </div>
-
-                  {/* Desktop Category navigation lists */}
-                  <div className="flex flex-wrap gap-4 font-outfit uppercase tracking-widest text-[10px]">
-                    {["all", "rings", "necklaces", "earrings", "bracelets"].map((cat) => (
-                      <button
-                        key={cat}
-                        onClick={() => setSelectedCategory(cat)}
-                        className={`py-2 px-5 rounded-full border transition-all cursor-pointer ${
-                          selectedCategory === cat
-                            ? "border-gold-classic bg-gold-classic/15 text-gold-classic font-bold"
-                            : "border-gold-classic/10 text-gray-400 hover:text-gold-pale"
-                        }`}
+                <ScrollReveal>
+                  <div className="flex flex-col lg:flex-row justify-between items-start lg:items-end mb-12 gap-6 border-b border-gold-classic/10 pb-8">
+                    <div>
+                      <motion.div
+                        initial={{ opacity: 0, x: -20 }}
+                        whileInView={{ opacity: 1, x: 0 }}
+                        viewport={{ once: true }}
+                        transition={{ duration: 0.6 }}
                       >
-                        {cat === "all" ? "All Ateliers" : cat}
-                      </button>
-                    ))}
-                  </div>
-                </div>
+                        <span className="text-[10px] tracking-[0.4em] text-gold-classic uppercase font-outfit font-semibold block mb-2">
+                          ATELIER GALLERY
+                        </span>
+                        <h2 className="font-cinzel text-2xl sm:text-4xl tracking-widest text-[#f5f0f5] uppercase font-bold">
+                          FINE JOAILLERIE COLLECTIONS
+                        </h2>
+                      </motion.div>
+                    </div>
 
-                {/* Filter Controls Row */}
-                <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-center mb-8 bg-plum-950/25 p-4 rounded-sm border border-gold-classic/10">
-                  {/* Search query input */}
-                  <div className="md:col-span-5 relative">
-                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gold-pale/50" />
-                    <input
-                      type="text"
-                      placeholder="Search diamond purity, gold collection, amethysts..."
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      className="w-full bg-plum-900 border border-gold-classic/10 focus:border-gold-classic/40 p-3 pl-11 text-xs rounded-sm outline-none text-[#f5f0f5] placeholder-gray-500 font-outfit"
-                    />
-                  </div>
-
-                  {/* Select Collection */}
-                  <div className="md:col-span-4 relative flex items-center gap-2">
-                    <SlidersHorizontal className="w-3.5 h-3.5 text-gold-classic" />
-                    <select
-                      value={selectedCollection}
-                      onChange={(e) => setSelectedCollection(e.target.value)}
-                      className="w-full bg-plum-900 border border-gold-classic/10 p-3 text-xs text-[#f5f0f5] rounded-sm focus:outline-none font-outfit"
+                    <motion.div
+                      initial={{ opacity: 0, x: 20 }}
+                      whileInView={{ opacity: 1, x: 0 }}
+                      viewport={{ once: true }}
+                      transition={{ duration: 0.6, delay: 0.2 }}
+                      className="flex flex-wrap gap-4 font-outfit uppercase tracking-widest text-[10px]"
                     >
-                      <option value="all">Every Atelier Collection</option>
-                      <option value="Imperial Aura">Imperial Aura</option>
-                      <option value="Stellar Orbit">Stellar Orbit</option>
-                      <option value="Elysian Forest">Elysian Forest</option>
-                      <option value="Dynasty">Dynasty Collection</option>
-                    </select>
+                      {["all", "rings", "necklaces", "earrings", "bracelets"].map((cat) => (
+                        <motion.button
+                          key={cat}
+                          whileHover={{ scale: 1.05, y: -2 }}
+                          whileTap={{ scale: 0.95 }}
+                          onClick={() => setSelectedCategory(cat)}
+                          className={`py-2 px-5 rounded-full border transition-all cursor-pointer ${
+                            selectedCategory === cat
+                              ? "border-gold-classic bg-gold-classic/15 text-gold-classic font-bold shadow-gold-soft"
+                              : "border-gold-classic/10 text-gray-400 hover:text-gold-pale hover:border-gold-classic/30"
+                          }`}
+                        >
+                          {cat === "all" ? "All Ateliers" : cat}
+                        </motion.button>
+                      ))}
+                    </motion.div>
                   </div>
+                </ScrollReveal>
 
-                  {/* Sorter selection */}
-                  <div className="md:col-span-3 relative flex items-center gap-2">
-                    <ArrowUpDown className="w-3.5 h-3.5 text-gold-classic" />
-                    <select
-                      value={sortBy}
-                      onChange={(e) => setSortBy(e.target.value)}
-                      className="w-full bg-plum-900 border border-gold-classic/10 p-3 text-xs text-[#f5f0f5] rounded-sm focus:outline-none font-outfit"
-                    >
-                      <option value="default">Default sorting</option>
-                      <option value="priceAsc">Price: Velvet Low to High</option>
-                      <option value="priceDesc">Price: Velvet High to Low</option>
-                      <option value="alphabetical">Alphanumeric Label</option>
-                    </select>
+                <ScrollReveal delay={100}>
+                  <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-center mb-8 bg-plum-950/25 p-4 rounded-sm border border-gold-classic/10 glass-panel-luxe" role="search" aria-label="Product filters">
+                    <div className="md:col-span-5 relative">
+                      <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gold-pale/50" aria-hidden="true" />
+                      <label htmlFor="search-input" className="sr-only">Search products</label>
+                      <input
+                        id="search-input"
+                        type="text"
+                        placeholder="Search diamond purity, gold collection, amethysts..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="w-full bg-plum-900 border border-gold-classic/10 focus:border-gold-classic/40 p-3 pl-11 text-xs rounded-sm outline-none text-[#f5f0f5] placeholder-gray-500 font-outfit transition-all duration-300"
+                        aria-label="Search products"
+                      />
+                    </div>
+
+                    <div className="md:col-span-4 relative flex items-center gap-2">
+                      <SlidersHorizontal className="w-3.5 h-3.5 text-gold-classic" aria-hidden="true" />
+                      <label htmlFor="filter-collection" className="sr-only">Filter by collection</label>
+                      <select
+                        id="filter-collection"
+                        value={selectedCollection}
+                        onChange={(e) => setSelectedCollection(e.target.value)}
+                        className="w-full bg-plum-900 border border-gold-classic/10 p-3 text-xs text-[#f5f0f5] rounded-sm focus:outline-none font-outfit focus:border-gold-classic/40 transition-all duration-300"
+                        aria-label="Filter by collection"
+                      >
+                        <option value="all">Every Atelier Collection</option>
+                        <option value="Imperial Aura">Imperial Aura</option>
+                        <option value="Stellar Orbit">Stellar Orbit</option>
+                        <option value="Elysian Forest">Elysian Forest</option>
+                        <option value="Dynasty">Dynasty Collection</option>
+                      </select>
+                    </div>
+
+                    <div className="md:col-span-3 relative flex items-center gap-2">
+                      <ArrowUpDown className="w-3.5 h-3.5 text-gold-classic" aria-hidden="true" />
+                      <label htmlFor="sort-products" className="sr-only">Sort products</label>
+                      <select
+                        id="sort-products"
+                        value={sortBy}
+                        onChange={(e) => setSortBy(e.target.value)}
+                        className="w-full bg-plum-900 border border-gold-classic/10 p-3 text-xs text-[#f5f0f5] rounded-sm focus:outline-none font-outfit focus:border-gold-classic/40 transition-all duration-300"
+                        aria-label="Sort products"
+                      >
+                        <option value="default">Default sorting</option>
+                        <option value="priceAsc">Price: Velvet Low to High</option>
+                        <option value="priceDesc">Price: Velvet High to Low</option>
+                        <option value="alphabetical">Alphanumeric Label</option>
+                      </select>
+                    </div>
                   </div>
-                </div>
+                </ScrollReveal>
 
-                {/* Loader / Content Empty / Product Grid Render */}
                 {loadingProducts ? (
                   <div className="py-24 flex justify-center items-center">
-                    <div className="relative w-16 h-16 border border-gold-classic/20 border-t-gold-classic rounded-full animate-spin" />
+                    <motion.div
+                      animate={{ rotate: 360 }}
+                      transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                      className="relative w-16 h-16 border border-gold-classic/20 border-t-gold-classic rounded-full"
+                    />
                   </div>
                 ) : sortedProducts.length === 0 ? (
-                  <div className="py-24 text-center space-y-4">
-                    <AlertCircle className="w-10 h-10 text-gold-pale/40 mx-auto" />
-                    <h4 className="font-cinzel text-md text-gold-pale tracking-widest">No Ateliers Aligned</h4>
-                    <p className="font-cormorant italic text-sm text-gray-400">
-                      "Adjust your filter bounds to locate available collections."
-                    </p>
-                  </div>
+                  <ScrollReveal>
+                    <div className="py-24 text-center space-y-4">
+                      <motion.div
+                        initial={{ scale: 0 }}
+                        animate={{ scale: 1 }}
+                        transition={{ type: "spring", stiffness: 200, damping: 15 }}
+                      >
+                        <AlertCircle className="w-10 h-10 text-gold-pale/40 mx-auto" />
+                      </motion.div>
+                      <h4 className="font-cinzel text-md text-gold-pale tracking-widest">No Ateliers Aligned</h4>
+                      <p className="font-cormorant italic text-sm text-gray-400">
+                        "Adjust your filter bounds to locate available collections."
+                      </p>
+                    </div>
+                  </ScrollReveal>
                 ) : (
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
-                    {sortedProducts.map((p) => (
-                      <ProductCard
-                        key={p.id}
-                        product={p}
-                        isWishlisted={wishlistItems.some((item) => item.id === p.id)}
-                        onToggleWishlist={() => handleToggleWishlist(p)}
-                        onSelect={() => {
-                          setSelectedProduct(p);
-                          setActiveDetailProduct(p);
-                        }}
-                      />
+                    {sortedProducts.map((p, index) => (
+                      <ScrollReveal key={p.id} delay={index * 80}>
+                        <ProductCard
+                          product={p}
+                          isWishlisted={wishlistItems.some((item) => item.id === p.id)}
+                          onToggleWishlist={() => handleToggleWishlist(p)}
+                          onSelect={() => {
+                            setSelectedProduct(p);
+                            setActiveDetailProduct(p);
+                          }}
+                        />
+                      </ScrollReveal>
                     ))}
                   </div>
                 )}
               </section>
+
+              {/* Feature Section - AI Try On Promo */}
+              <ScrollReveal>
+                <section className="relative py-32 overflow-hidden luxury-texture">
+                  <div className="absolute inset-0 bg-gradient-to-b from-plum-950 via-plum-900 to-plum-950" />
+                  <div className="absolute inset-0 opacity-30">
+                    <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-gold-classic/10 rounded-full blur-[120px]" />
+                    <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-rose-gold/10 rounded-full blur-[100px]" />
+                  </div>
+
+                  <div className="relative z-10 max-w-7xl mx-auto px-6 text-center">
+                    <motion.div
+                      initial={{ opacity: 0, y: 30 }}
+                      whileInView={{ opacity: 1, y: 0 }}
+                      viewport={{ once: true }}
+                      transition={{ duration: 0.8 }}
+                    >
+                      <motion.div
+                        animate={{ rotate: [0, 10, -10, 0] }}
+                        transition={{ duration: 3, repeat: Infinity, repeatDelay: 2 }}
+                        className="inline-flex items-center gap-2 text-gold-classic mb-6"
+                      >
+                        <Zap className="w-5 h-5" />
+                        <span className="text-[10px] tracking-[0.3em] uppercase font-outfit">AI-Powered Experience</span>
+                      </motion.div>
+
+                      <h2 className="font-cinzel text-3xl sm:text-5xl md:text-6xl tracking-widest text-[#f5f0f5] uppercase mb-6">
+                        Virtual Try-On Studio
+                      </h2>
+
+                      <p className="font-cormorant text-lg sm:text-xl text-gray-400 italic max-w-2xl mx-auto mb-10 leading-relaxed">
+                        "Experience your chosen pieces before they arrive. Our AI-powered studio renders jewelry on your unique features with photorealistic precision."
+                      </p>
+
+                      <motion.button
+                        onClick={() => setActiveTab("tryon")}
+                        whileHover={{ scale: 1.05, boxShadow: "0 12px 50px rgba(197, 160, 89, 0.4)" }}
+                        whileTap={{ scale: 0.98 }}
+                        className="px-10 py-4 bg-gold-gradient text-plum-950 font-outfit text-xs tracking-[0.35em] uppercase font-bold rounded-sm cursor-pointer shadow-gold-glow"
+                      >
+                        Launch Studio
+                      </motion.button>
+                    </motion.div>
+                  </div>
+                </section>
+              </ScrollReveal>
             </motion.div>
           )}
 
@@ -506,12 +606,14 @@ export default function App() {
                   <p className="font-cormorant text-gray-300 italic text-md leading-relaxed">
                     "Only registered curators and authorized administrators may enter this directory."
                   </p>
-                  <button
+                  <motion.button
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.98 }}
                     onClick={() => setActiveTab("catalog")}
                     className="py-2.5 px-6 bg-gold-gradient text-plum-950 font-outfit font-bold uppercase tracking-widest text-[10px] rounded-sm cursor-pointer hover:shadow-gold-glow transition-all"
                   >
                     Excurse to Catalog
-                  </button>
+                  </motion.button>
                 </div>
               )}
             </motion.div>
@@ -519,7 +621,6 @@ export default function App() {
         </AnimatePresence>
       </main>
 
-      {/* FOOTER - Humbler and classic */}
       <footer className="border-t border-gold-classic/15 bg-plum-950 py-16 relative z-10">
         <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 md:grid-cols-4 gap-12 font-outfit text-xs text-gray-400">
           <div className="space-y-4">
@@ -554,13 +655,10 @@ export default function App() {
           </div>
         </div>
         <div className="max-w-7xl mx-auto px-6 border-t border-gold-classic/5 mt-12 pt-8 text-center text-[10px] text-gray-500 font-mono tracking-widest uppercase">
-          © 2026 ASTEYA Premium Fashion Jewelry Paris Ateliers. Powered securely with Google Gemini. Atelier Quality Registered.
+          © 2026 ASTEYA Premium Fashion Jewelry Paris Ateliers. Powered securely with NVIDIA NIM AI. Atelier Quality Registered.
         </div>
       </footer>
 
-      {/* RENDER MODAL LAYERS */}
-      
-      {/* 3D Details and photo Modal popup */}
       {activeDetailProduct && (
         <ProductDetailModal
           product={activeDetailProduct}
@@ -572,12 +670,11 @@ export default function App() {
           onTryOn={() => {
             setSelectedProduct(activeDetailProduct);
             setActiveDetailProduct(null);
-            setActiveTab("tryon"); // redirect directly to studio tryon
+            setActiveTab("tryon");
           }}
         />
       )}
 
-      {/* Cart Drawer */}
       <CartDrawer
         isOpen={isCartOpen}
         onClose={() => setIsCartOpen(false)}
@@ -588,7 +685,6 @@ export default function App() {
         currentUser={currentUser}
       />
 
-      {/* Wishlist Drawer */}
       <WishlistDrawer
         isOpen={isWishlistOpen}
         onClose={() => setIsWishlistOpen(false)}

@@ -714,10 +714,10 @@ export default function AITryOnStudio({
     }
   }, [uploadedBase64, sourceMode, activeProduct?.id]);
 
-  // Execute Gemini AI analysis call & actual MediaPipe face alignment
+  // Execute NVIDIA NIM AI analysis call & actual MediaPipe face alignment
   const triggerAICognitionAnalysis = async () => {
     const imgData = snapedUserImage();
-    
+
     setAnalyzingState("capturing");
     setAnalysisLogs("Connecting to ASTEYA Haute Analytics Engine...");
 
@@ -732,10 +732,10 @@ export default function AITryOnStudio({
       console.warn("ASTEYA Core: Active Face Mesh mapping failure. Utilizing cache bounds.", e);
     }
 
-    // 2. Query Gemini styling critique
+    // 2. Query NVIDIA NIM styling critique
     setTimeout(async () => {
       setAnalyzingState("gemologist");
-      setAnalysisLogs("Initiating Gemini Gemology critique & color-reflect compatibility review...");
+      setAnalysisLogs("Initiating NVIDIA NIM Gemology critique & color-reflect compatibility review...");
       
       try {
         const response = await fetch("/api/ai/tryon", {
@@ -824,7 +824,7 @@ export default function AITryOnStudio({
           AI Virtual Try-On Studio
         </h1>
         <p className="font-cormorant text-gray-300 italic text-md sm:text-lg">
-          "Experience pure Parisian gold tailored directly of your feature geometry. Map landmarks, analyze tone matches, and receive individual Gemini gemology notes."
+          "Experience pure Parisian gold tailored directly of your feature geometry. Map landmarks, analyze tone matches, and receive individual NVIDIA NIM gemology notes."
         </p>
       </div>
 
@@ -1402,7 +1402,7 @@ export default function AITryOnStudio({
                 >
                   <Sparkles className="w-10 h-10 text-gold-classic animate-pulse" />
                   <h3 className="font-cinzel text-sm tracking-widest text-[#f5f0f5] uppercase font-bold">
-                    INITIATE GEMINI STYLIST ASSESSMENT
+                    INITIATE NVIDIA AI STYLIST ASSESSMENT
                   </h3>
                   <p className="font-cormorant text-gray-400 text-sm italic max-w-xs">
                     "Connect our cloud-native AI processor and receive Atelier-certified compatibility assessments tailored for your features."

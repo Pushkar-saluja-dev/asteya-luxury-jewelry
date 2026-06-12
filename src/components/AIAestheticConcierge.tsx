@@ -18,13 +18,13 @@ const OUTFIT_TEMPLATES = [
     url: "https://images.unsplash.com/photo-1610030469983-98e550d6193c?auto=format&fit=crop&q=80&w=400"
   },
   {
-    id: "outfit-crimson",
-    name: "Crimson Silk Anarkali",
+    id: "outfit-silk",
+    name: "Ivory Silk Gown",
     url: "https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?auto=format&fit=crop&q=80&w=400"
   },
   {
-    id: "outfit-champagne",
-    name: "Champagne Evening Gown",
+    id: "outfit-crimson",
+    name: "Crimson Evening Gown",
     url: "https://images.unsplash.com/photo-1595777457583-95e059d581b8?auto=format&fit=crop&q=80&w=400"
   }
 ];
@@ -251,7 +251,7 @@ export default function AIAestheticConcierge({
     });
   };
 
-  // Execute Gemini Aesthetic Matching Algorithm
+  // Execute NVIDIA NIM Aesthetic Matching Algorithm
   const triggerAestheticAllocation = async () => {
     const numericBudget = matchBudget ? Number(budget.replace(/[^0-9]/g, "")) : 999999;
     if (matchBudget && (!numericBudget || numericBudget <= 0)) {
@@ -271,12 +271,12 @@ export default function AIAestheticConcierge({
         if (selectedOutfitTemplate.id === "outfit-emerald") {
           outfitColorName = "Emerald Green";
           swatches = ["Royal Emerald", "Mint Green"];
+        } else if (selectedOutfitTemplate.id === "outfit-silk") {
+          outfitColorName = "Ivory White";
+          swatches = ["Pure Ivory", "Pearl White"];
         } else if (selectedOutfitTemplate.id === "outfit-crimson") {
           outfitColorName = "Sovereign Crimson";
           swatches = ["Crimson Red", "Ruby Velvet"];
-        } else if (selectedOutfitTemplate.id === "outfit-champagne") {
-          outfitColorName = "Champagne Gold";
-          swatches = ["Champagne Gold", "Satin Gold"];
         }
       } else if (uploadedOutfitBase64) {
         const analysis = await analyzeDominantColor(uploadedOutfitBase64);
@@ -339,29 +339,66 @@ export default function AIAestheticConcierge({
           if (matchOutfit) {
             const query = outfitColorName.toLowerCase();
             if (query.includes("emerald") || query.includes("green")) {
-              matching = affordable.filter(p => p.id === "prod-4" || p.id === "prod-3" || p.id === "prod-5" || p.id === "prod-2" || p.id === "prod-6");
-            } else if (query.includes("crimson") || query.includes("red")) {
-              matching = affordable.filter(p => p.id === "prod-1" || p.id === "prod-2" || p.id === "prod-3" || p.id === "prod-5" || p.id === "prod-6");
+              matching = affordable.filter(p => 
+                p.name.toLowerCase().includes("emerald") || 
+                p.name.toLowerCase().includes("green") ||
+                p.description.toLowerCase().includes("emerald") || 
+                p.description.toLowerCase().includes("green") ||
+                p.materials.some((m: string) => m.toLowerCase().includes("emerald") || m.toLowerCase().includes("green"))
+              );
+            } else if (query.includes("crimson") || query.includes("red") || query.includes("ruby")) {
+              matching = affordable.filter(p => 
+                p.name.toLowerCase().includes("red") || 
+                p.name.toLowerCase().includes("crimson") ||
+                p.name.toLowerCase().includes("ruby") ||
+                p.name.toLowerCase().includes("amethyst") ||
+                p.description.toLowerCase().includes("red") || 
+                p.description.toLowerCase().includes("crimson") ||
+                p.description.toLowerCase().includes("ruby") ||
+                p.materials.some((m: string) => m.toLowerCase().includes("red") || m.toLowerCase().includes("crimson") || m.toLowerCase().includes("ruby"))
+              );
             } else if (query.includes("champagne") || query.includes("gold")) {
-              matching = affordable.filter(p => p.id === "prod-3" || p.id === "prod-5" || p.id === "prod-1" || p.id === "prod-2" || p.id === "prod-6");
-            } else if (query.includes("white") || query.includes("ivory") || query.includes("pearl")) {
-              matching = affordable;
+              matching = affordable.filter(p => 
+                p.name.toLowerCase().includes("gold") || 
+                p.description.toLowerCase().includes("gold") ||
+                p.materials.some((m: string) => m.toLowerCase().includes("gold"))
+              );
+            } else if (query.includes("white") || query.includes("ivory") || query.includes("pearl") || query.includes("silver") || query.includes("diamond") || query.includes("ear")) {
+              matching = affordable.filter(p => 
+                p.name.toLowerCase().includes("white") || 
+                p.name.toLowerCase().includes("pearl") || 
+                p.name.toLowerCase().includes("diamond") ||
+                p.name.toLowerCase().includes("silver") ||
+                p.name.toLowerCase().includes("ear") ||
+                p.description.toLowerCase().includes("white") || 
+                p.description.toLowerCase().includes("pearl") ||
+                p.description.toLowerCase().includes("diamond") ||
+                p.description.toLowerCase().includes("ear")
+              );
             } else if (query.includes("sapphire") || query.includes("blue")) {
-              matching = affordable.filter(p => p.id === "prod-2" || p.id === "prod-6" || p.id === "prod-3" || p.id === "prod-5" || p.id === "prod-1");
+              matching = affordable.filter(p => 
+                p.name.toLowerCase().includes("blue") || 
+                p.name.toLowerCase().includes("sapphire") ||
+                p.description.toLowerCase().includes("blue") || 
+                p.description.toLowerCase().includes("sapphire")
+              );
+            }
+            if (matching.length === 0) {
+              matching = affordable;
             }
           }
 
           setAestheticResults({
-            undertone: matchSkin ? (skinPayload ? "Cool Alabaster Undertone" : "Warm Golden Undertone") : "Undertone Assessment Bypassed",
-            metalRecommendation: matchSkin ? (numericBudget >= 12000 ? "Solid 18K Yellow Gold & Filigree" : "18K Gold Plated Vermeil") : "Classic Alloys",
+            undertone: matchSkin ? (skinPayload ? "Cool Alabaster Undertone" : "Warm Golden Undertone") : "Curation Custom Select",
+            metalRecommendation: matchSkin ? (numericBudget >= 12000 ? "Solid 18K Yellow Gold & Filigree" : "18K Gold Plated Vermeil") : "Atelier Precious Alloys",
             skinRationale: matchSkin
               ? "Your skin reflects warm light frequencies naturally, which coordinates beautifully with traditional deep-gold polishing."
-              : "Skin matching was bypassed by user selection.",
+              : "Skin undertone assessment bypassed by client.",
             dominantColors: matchOutfit ? swatches : ["Atelier Gold", "Signature White"],
-            styleMatchAura: matchOutfit ? "Haute Traditional / Elite Festive Gala" : "Bespoke Classic Curation",
+            styleMatchAura: matchOutfit ? "Haute Traditional / Elegant Gala Festive" : "Classic Signature Selection",
             outfitRationale: matchOutfit
-              ? `The grand contours of your outfit in ${outfitColorName} coordinate perfectly with our selected creations.`
-              : "Outfit coordination was bypassed by user selection.",
+              ? `The structural silhouette of the dress in ${outfitColorName} coordinates excellently with clean, circular metal architectures and suspended teardrop simulations.`
+              : "Outfit matching bypassed by client.",
             stylistCritique: matchBudget
               ? (matching.length > 0 
                   ? `An opulent jewelry curation strictly adhering to your budget maximum of ${formatPriceINR(numericBudget)}. These pieces combine timeless aesthetics and premium simulated stones to frame your attire with majestic luxury.`
@@ -529,15 +566,17 @@ export default function AIAestheticConcierge({
                   FINANCIAL LEDGER STATS
                 </span>
                 <h3 className="font-cinzel text-base tracking-widest text-[#f5f0f5] uppercase font-bold">
-                  Budget Maximum
+                  {matchBudget ? "Budget Maximum" : "Budget Cap Bypassed"}
                 </h3>
                 <div className="py-3 px-4 rounded-sm border border-green-500/20 bg-green-500/5 font-outfit text-xl text-green-400 font-bold tracking-widest">
-                  {formatPriceINR(parsedBudget)}
+                  {matchBudget ? formatPriceINR(parsedBudget) : "No Limit"}
                 </div>
                 <p className="font-cormorant text-sm italic text-gray-400 leading-relaxed">
-                  {products.filter(p => aestheticResults.recommendedProductIds.includes(p.id)).some(p => p.price <= parsedBudget)
-                    ? "Only pieces whose prices fit strictly inside your budget limit have been selected for curation."
-                    : "Your entered budget limit is below our baseline creations. We have allocated our closest accessible masterpiece for your styling compatibility."
+                  {matchBudget 
+                    ? (products.filter(p => aestheticResults.recommendedProductIds.includes(p.id)).some(p => p.price <= parsedBudget)
+                        ? "Only pieces whose prices fit strictly inside your budget limit have been selected for curation."
+                        : "Your entered budget limit is below our baseline creations. We have allocated our closest accessible masterpiece for your styling compatibility.")
+                    : "Budget constraints were bypassed by user selection. Curation is focused purely on aesthetic harmony."
                   }
                 </p>
               </div>

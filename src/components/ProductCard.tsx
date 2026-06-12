@@ -1,5 +1,4 @@
-import React from "react";
-import { Heart, Sparkles, Eye, ShieldCheck } from "lucide-react";
+import { Heart, Sparkles, Eye, ShieldCheck, Diamond } from "lucide-react";
 import { motion } from "motion/react";
 import { Product } from "../types";
 
@@ -17,7 +16,6 @@ export default function ProductCard({
   onToggleWishlist,
   onSelect
 }: ProductCardProps) {
-  // Safe currency symbol formatting
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat("en-IN", {
       style: "currency",
@@ -31,103 +29,161 @@ export default function ProductCard({
       initial={{ opacity: 0, y: 24 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: "-40px" }}
-      transition={{ duration: 0.8 }}
-      className="group relative flex flex-col bg-plum-950/40 border border-gold-classic/10 rounded-sm hover:border-gold-classic/35 transition-all duration-500 overflow-hidden shadow-gold-soft"
+      transition={{ duration: 0.8, ease: [0.4, 0, 0.2, 1] }}
+      whileHover={{ y: -8, scale: 1.02 }}
+      className="group relative flex flex-col glass-card-luxe overflow-hidden"
     >
-      {/* Absolute Badges (New, Limited, etc.) */}
+      {/* Shine effect on hover */}
+      <div className="absolute inset-0 z-30 pointer-events-none">
+        <motion.div
+          className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full"
+          initial={{ x: "-100%" }}
+          whileHover={{ x: "100%" }}
+          transition={{ duration: 0.8, ease: "easeOut" }}
+        />
+      </div>
+
+      {/* Absolute Badges */}
       <div className="absolute top-4 left-4 z-20 flex flex-col gap-2">
         {product.isNew && (
-          <span className="flex items-center gap-1 bg-gold-gradient text-plum-950 text-[8px] font-bold tracking-[0.2em] uppercase px-2.5 py-1 rounded-sm">
-            <Sparkles className="w-2.5 h-2.5" />
+          <motion.div
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.2 }}
+            className="flex items-center gap-1.5 bg-gold-gradient text-plum-950 text-[8px] font-bold tracking-[0.2em] uppercase px-3 py-1.5 rounded-sm shadow-gold-glow"
+          >
+            <Sparkles className="w-3 h-3" />
             NEW ATELIER
-          </span>
+          </motion.div>
         )}
         {product.isLimited && (
-          <span className="flex items-center gap-1 bg-purple-900 border border-gold-classic/25 text-gold-pale text-[8px] font-bold tracking-[0.2em] uppercase px-2.5 py-1 rounded-sm">
-            <ShieldCheck className="w-2.5 h-2.5 text-gold-classic" />
-            LIMITED EDITION
-          </span>
+          <motion.div
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.3 }}
+            className="flex items-center gap-1.5 bg-purple-900/90 backdrop-blur-sm border border-gold-classic/30 text-gold-pale text-[8px] font-bold tracking-[0.2em] uppercase px-3 py-1.5 rounded-sm"
+          >
+            <ShieldCheck className="w-3 h-3 text-gold-classic" />
+            LIMITED
+          </motion.div>
         )}
       </div>
 
-      {/* Heart Wishlist Trigger */}
-      <button
+      {/* Heart Wishlist Button */}
+      <motion.button
         onClick={(e) => {
           e.stopPropagation();
           onToggleWishlist();
         }}
-        className="absolute top-4 right-4 z-20 p-2 rounded-full glass-panel hover:bg-gold-classic/20 text-gold-pale hover:text-gold-classic transition-all duration-300 group/wish"
+        whileHover={{ scale: 1.15 }}
+        whileTap={{ scale: 0.9 }}
+        className="absolute top-4 right-4 z-20 p-2.5 rounded-full glass-panel hover:bg-gold-classic/20 text-gold-pale hover:text-gold-classic transition-all duration-300 shadow-lg"
         aria-label="Add to Wishlist"
       >
-        <Heart
-          className={`w-4 h-4 transition-all duration-300 ${
-            isWishlisted
-              ? "fill-gold-classic text-gold-classic scale-110"
-              : "text-gold-pale group-hover/wish:scale-105"
-          }`}
-        />
-      </button>
+        <motion.div
+          animate={isWishlisted ? { scale: [1, 1.3, 1] } : {}}
+          transition={{ duration: 0.3 }}
+        >
+          <Heart
+            className={`w-4 h-4 transition-all duration-300 ${
+              isWishlisted
+                ? "fill-gold-classic text-gold-classic"
+                : ""
+            }`}
+          />
+        </motion.div>
+      </motion.button>
 
-      {/* Premium Multi-angle Image Display */}
+      {/* Premium Image Display */}
       <div
         onClick={onSelect}
         className="relative aspect-[4/5] overflow-hidden cursor-pointer bg-plum-900"
       >
-        {/* Main Angle Image */}
-        <img
+        {/* Main Image */}
+        <motion.img
           src={product.images[0]}
           alt={product.name}
-          className="w-full h-full object-cover object-center group-hover:scale-110 transition-transform duration-1000 ease-out"
+          className="w-full h-full object-cover object-center"
+          initial={{ scale: 1.1 }}
+          animate={{ scale: 1.1 }}
+          whileHover={{ scale: 1.15 }}
+          transition={{ duration: 1.2, ease: "easeOut" }}
           referrerPolicy="no-referrer"
         />
 
-        {/* Cinematic Golden Overlay Accent Line on hover */}
-        <div className="absolute inset-0 bg-gradient-to-t from-plum-950 via-transparent to-transparent opacity-60 group-hover:opacity-40 transition-opacity duration-500" />
-        
-        {/* Hover Quick View Trigger button wrapper */}
-        <div className="absolute inset-0 z-10 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-plum-950/40 backdrop-blur-[2px]">
-          <motion.div
-            whileHover={{ scale: 1.05 }}
-            className="flex items-center gap-2 px-5 py-2.5 border border-gold-classic/40 bg-plum-950/80 hover:bg-gold-classic text-gold-classic hover:text-plum-950 font-outfit text-[10px] tracking-[0.25em] uppercase font-bold transition-colors"
-          >
-            <Eye className="w-3.5 h-3.5" />
-            Enter Atelier Detail
-          </motion.div>
+        {/* Gradient overlay */}
+        <div className="absolute inset-0 bg-gradient-to-t from-plum-950 via-plum-950/20 to-transparent opacity-60 group-hover:opacity-40 transition-opacity duration-500" />
+
+        {/* Sparkle decorations */}
+        <div className="absolute top-1/4 right-1/4 opacity-0 group-hover:opacity-100 transition-opacity duration-500 delay-100">
+          <Diamond className="w-6 h-6 text-gold-classic/60" />
         </div>
+        <div className="absolute bottom-1/4 left-1/4 opacity-0 group-hover:opacity-100 transition-opacity duration-500 delay-200">
+          <Sparkles className="w-4 h-4 text-gold-pale/40" />
+        </div>
+
+        {/* Quick View Button */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          whileHover={{ opacity: 1 }}
+          className="absolute inset-0 z-10 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-500 bg-plum-950/50 backdrop-blur-[4px]"
+        >
+          <motion.div
+            whileHover={{ scale: 1.05, y: -2 }}
+            className="flex items-center gap-2.5 px-6 py-3 border border-gold-classic/50 bg-plum-950/90 text-gold-classic font-outfit text-[9px] tracking-[0.25em] uppercase font-bold shadow-gold-glow"
+          >
+            <Eye className="w-4 h-4" />
+            View Atelier
+          </motion.div>
+        </motion.div>
       </div>
 
-      {/* Product Card Info */}
+      {/* Product Info */}
       <div className="p-6 flex flex-col flex-grow border-t border-gold-classic/5">
-        {/* Category Label and Collection */}
-        <div className="flex items-center justify-between mb-1.5">
-          <span className="text-[10px] tracking-[0.2em] text-gold-pale/60 uppercase font-outfit">
+        {/* Category & Collection */}
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-[10px] tracking-[0.2em] text-gold-pale/50 uppercase font-outfit">
             {product.categoryLabel}
           </span>
-          <span className="text-[9px] tracking-widest text-[#be93be] uppercase font-mono font-medium">
+          <span className="text-[9px] tracking-widest text-gold-classic/70 uppercase font-mono font-medium bg-gold-classic/5 px-2 py-0.5 rounded-sm">
             {product.collection}
           </span>
         </div>
 
-        {/* Title */}
+        {/* Product Name */}
         <h3
           onClick={onSelect}
-          className="font-cinzel text-sm sm:text-base tracking-widest text-f7f3f7 hover:text-gold-classic cursor-pointer transition-colors line-clamp-1 mb-2.5 font-semibold"
+          className="font-cinzel text-sm sm:text-base tracking-widest text-[#f7f3f7] hover:text-gold-classic cursor-pointer transition-colors duration-300 line-clamp-1 mb-3 font-semibold"
         >
           {product.name}
         </h3>
 
-        {/* Materials Summary Text */}
+        {/* Materials */}
         <p className="font-cormorant text-xs text-gray-400 italic mb-5 leading-relaxed line-clamp-2">
           {product.materials.join(" • ")}
         </p>
 
-        {/* Price and Details trigger row */}
+        {/* Price Row */}
         <div className="mt-auto flex items-center justify-between pt-4 border-t border-gold-classic/5">
-          <span className="font-outfit font-semibold text-gold-classic text-sm sm:text-base tracking-[0.1em]">
+          <motion.span
+            initial={{ opacity: 0 }}
+            whileInView={{ opacity: 1 }}
+            className="font-outfit font-semibold text-gold-classic text-sm sm:text-base tracking-[0.1em]"
+          >
             {formatPrice(product.price)}
-          </span>
-          <div className="text-[10px] font-mono text-gray-500 tracking-widest uppercase">
-            {product.caratWeight > 0 ? `${product.caratWeight} ctwt` : "Solid Met"}
+          </motion.span>
+          <div className="text-[10px] font-mono text-gray-500 tracking-widest uppercase flex items-center gap-1.5">
+            {product.caratWeight > 0 ? (
+              <>
+                <Diamond className="w-3 h-3 text-gold-classic/50" />
+                {product.caratWeight} ct
+              </>
+            ) : (
+              <>
+                <ShieldCheck className="w-3 h-3 text-gold-classic/50" />
+                SOLID METAL
+              </>
+            )}
           </div>
         </div>
       </div>

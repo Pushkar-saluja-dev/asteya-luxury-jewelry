@@ -23,5 +23,7 @@
     "allowImportingTsExtensions": true,
     "noEmit": true,
     "types": ["vite/client"]
-  }
+  },
+  "include": ["src", "server.ts", "local_server.ts", "netlify_entry.ts"],
+  "exclude": ["node_modules", "dist"]
 }

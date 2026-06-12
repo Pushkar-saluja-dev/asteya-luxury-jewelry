@@ -257,10 +257,10 @@ export default function AdminDashboard({ products, onRefreshProducts }: AdminDas
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ imageBase64: rawBase64 })
       });
-      
+
       const aiData = await classifyResponse.json();
       if (!aiData.success) {
-        throw new Error("Gemini AI classification protocol failed.");
+        throw new Error("NVIDIA NIM AI classification protocol failed.");
       }
 
       setStatusMessage("AI: Keying out background and preparing transparent AR overlay...");
@@ -326,7 +326,7 @@ export default function AdminDashboard({ products, onRefreshProducts }: AdminDas
       
       const aiData = await classifyResponse.json();
       if (!aiData.success) {
-        throw new Error("Gemini AI classification protocol failed.");
+        throw new Error("NVIDIA NIM AI classification protocol failed.");
       }
 
       setStatusMessage(`AI: Detected ${aiData.category} (${aiData.categoryLabel}). Removing background...`);

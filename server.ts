@@ -1,12 +1,12 @@
 import express from "express";
 import path from "path";
-import { GoogleGenAI } from "@google/genai";
 import { createClient } from "@supabase/supabase-js";
-import dotenv from "dotenv";
+import { validateProductInput, sanitizeFileName, logSecurityEvent, validateMimeType, validateFileExtension, isAdminEmail } from "./src/lib/security";
 import fs from "fs";
 import { PNG } from "pngjs";
 import nodemailer from "nodemailer";
 
+import dotenv from "dotenv";
 dotenv.config();
 
 // Startup sequence to extract and refine the heart earring try-on image
@@ -87,27 +87,16 @@ try {
 }
 
 
-// Create the GoogleGenAI instance with the server-side server-safe KEY
-let ai: GoogleGenAI | null = null;
-const API_KEY = process.env.GEMINI_API_KEY;
+// NVIDIA NIM API Key for AI inference
+const NVIDIA_API_KEY = process.env.NVIDIA_API_KEY;
 
-if (API_KEY && API_KEY !== "MY_GEMINI_API_KEY") {
-  try {
-    ai = new GoogleGenAI({
-      apiKey: API_KEY,
-      httpOptions: {
-        headers: {
-          "User-Agent": "aistudio-build",
-        },
-      },
-    });
-    console.log("ASTEYA Core: Gemini ai system successfully bound.");
-  } catch (error) {
-    console.error("ASTEYA Core: Unexpected error initializing Gemini:", error);
-  }
+if (NVIDIA_API_KEY && NVIDIA_API_KEY.startsWith("nvapi-")) {
+  console.log("ASTEYA Core: NVIDIA NIM AI system successfully bound.");
+} else {
+  console.warn("ASTEYA Core: NVIDIA API key not configured or invalid. AI features will be unavailable.");
 }
 
-// ----------------- Dual AI Orchestration Engine (Gemini & Nvidia NIM) -----------------
+// ----------------- NVIDIA NIM AI Engine -----------------
 const callAIEngine = async (params: {
   prompt: string;
   visionPrompt?: string;
@@ -181,37 +170,27 @@ const callAIEngine = async (params: {
       const resJson = await response.json();
       return resJson.choices[0].message.content.trim();
     } catch (err) {
-      console.warn("ASTEYA Core: NVIDIA NIM query failed, falling back to Gemini.", err);
+      console.error("ASTEYA Core: NVIDIA NIM query failed.", err);
+      throw err;
     }
   }
 
-  // Fallback to Google Gemini
-  if (ai) {
-    console.log("ASTEYA Core: Orchestrating AI query via Google Gemini API...");
-    const contents: any[] = [];
-    if (imageBase64) {
-      const cleanBase64 = imageBase64.replace(/^data:image\/\w+;base64,/, "");
-      contents.push({
-        inlineData: {
-          mimeType: "image/jpeg",
-          data: cleanBase64
-        }
-      });
-      contents.push(params.visionPrompt || params.prompt);
-    } else {
-      contents.push(params.prompt);
-    }
+  throw new Error("NVIDIA NIM AI Engine is not configured. Please add a valid NVIDIA_API_KEY to your environment.");
+};
 
-    const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
-      contents,
-      config: params.jsonMode ? { responseMimeType: "application/json" } : undefined
-    });
-
-    return response.text ? response.text.trim() : "";
-  }
-
-  throw new Error("No active AI Engine (Nvidia NIM or Google Gemini) successfully connected.");
+const isSafetyRefusal = (text: string): boolean => {
+  if (!text) return false;
+  const lower = text.toLowerCase();
+  return lower.includes("cannot provide") || 
+         lower.includes("not appropriate") || 
+         lower.includes("ethical to create") ||
+         lower.includes("against safety") ||
+         lower.includes("adults and minors") ||
+         lower.includes("sexual context") ||
+         lower.includes("promotes or glorifies") ||
+         lower.includes("i'm sorry") ||
+         lower.includes("i cannot") ||
+         lower.includes("i am unable");
 };
 
 // ---------------- Supabase Connection ----------------
@@ -302,10 +281,72 @@ if (!isSupabaseConfigured) {
 const app = express();
 const PORT = 3000;
 
+// ==================== SECURITY HARDENING ====================
+// Rate limiting: Simple in-memory sliding window limiter
+const RATE_LIMIT_WINDOWS = new Map<string, { count: number; resetAt: number }>();
+const getRateLimitKey = (ip: string, endpoint: string) => `${ip}:${endpoint}`;
+
+const rateLimit = (maxRequests: number, windowMs: number) => {
+  return (req: express.Request, res: express.Response, next: express.NextFunction) => {
+    const ip = req.ip || req.socket.remoteAddress || "unknown";
+    const key = getRateLimitKey(ip, req.path);
+    const now = Date.now();
+    let record = RATE_LIMIT_WINDOWS.get(key);
+
+    if (!record || now > record.resetAt) {
+      record = { count: 0, resetAt: now + windowMs };
+      RATE_LIMIT_WINDOWS.set(key, record);
+    }
+
+    record.count += 1;
+
+    if (record.count > maxRequests) {
+      console.warn(`RATE LIMIT: ${ip} exceeded ${maxRequests} reqs/${windowMs}ms on ${req.path}`);
+      return res.status(429).json({
+        success: false,
+        error: "Too many requests. Please slow down and try again later."
+      });
+    }
+
+    next();
+  };
+};
+
+// CORS configuration for production security
+const allowedOrigins = process.env.ALLOWED_ORIGINS
+  ? process.env.ALLOWED_ORIGINS.split(",")
+  : ["http://localhost:3000", "http://localhost:5173"];
+
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+  if (origin && allowedOrigins.includes(origin)) {
+    res.setHeader("Access-Control-Allow-Origin", origin);
+  }
+  res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With, X-File-Name");
+  res.setHeader("Access-Control-Allow-Credentials", "true");
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("X-Frame-Options", "SAMEORIGIN");
+  res.setHeader("X-XSS-Protection", "1; mode=block");
+
+  if (req.method === "OPTIONS") {
+    return res.sendStatus(200);
+  }
+  next();
+});
+
+// ==================== END SECURITY HARDENING ====================
+
 // Middleware configuration
 app.use(express.json({ limit: "20mb" }));
 app.use(express.urlencoded({ limit: "20mb", extended: true }));
 app.use("/uploads", express.static(path.join(process.cwd(), "public", "uploads")));
+
+// Apply rate limiting to sensitive API endpoints
+app.use("/api/ai", rateLimit(30, 60000));      // 30 requests per minute for AI endpoints
+app.use("/api/upload", rateLimit(10, 60000));   // 10 uploads per minute
+app.use("/api/checkout", rateLimit(5, 60000));  // 5 checkout attempts per minute
+app.use("/api/products", rateLimit(100, 60000)); // 100 requests per minute for products
 
 // Luxury Product Database
 const PRODUCTS = [
@@ -576,9 +617,38 @@ app.get("/api/products/:slug", async (req, res) => {
   res.json({ product });
 });
 
-// 3. Create New Product
+// 3. Create New Product - WITH INPUT VALIDATION
 app.post("/api/products/new", async (req, res) => {
   const p = req.body;
+
+  // Security: Validate admin access via email header
+  const adminEmail = req.headers["x-admin-email"] as string;
+  if (!adminEmail || !isAdminEmail(adminEmail)) {
+    logSecurityEvent("UNAUTHORIZED_PRODUCT_CREATE", { email: adminEmail });
+    return res.status(403).json({
+      success: false,
+      error: "Access denied. Administrator privileges required."
+    });
+  }
+
+  // Validate product input
+  const validation = validateProductInput({
+    name: p.name,
+    price: p.price,
+    category: p.category,
+    description: p.description,
+    materials: p.materials,
+    images: p.images
+  });
+
+  if (!validation.valid) {
+    logSecurityEvent("INVALID_PRODUCT_INPUT", { errors: validation.errors, email: adminEmail });
+    return res.status(400).json({
+      success: false,
+      errors: validation.errors
+    });
+  }
+
   if (supabase) {
     try {
       const specs = {
@@ -620,9 +690,38 @@ app.post("/api/products/new", async (req, res) => {
   res.json({ success: true, product: p, simulated: true });
 });
 
-// 4. Update Existing Product
+// 4. Update Existing Product - WITH INPUT VALIDATION
 app.post("/api/products/:slug/edit", async (req, res) => {
   const p = req.body;
+
+  // Security: Validate admin access
+  const adminEmail = req.headers["x-admin-email"] as string;
+  if (!adminEmail || !isAdminEmail(adminEmail)) {
+    logSecurityEvent("UNAUTHORIZED_PRODUCT_EDIT", { email: adminEmail, slug: req.params.slug });
+    return res.status(403).json({
+      success: false,
+      error: "Access denied. Administrator privileges required."
+    });
+  }
+
+  // Validate product input
+  const validation = validateProductInput({
+    name: p.name,
+    price: p.price,
+    category: p.category,
+    description: p.description,
+    materials: p.materials,
+    images: p.images
+  });
+
+  if (!validation.valid) {
+    logSecurityEvent("INVALID_PRODUCT_EDIT", { errors: validation.errors, slug: req.params.slug });
+    return res.status(400).json({
+      success: false,
+      errors: validation.errors
+    });
+  }
+
   if (supabase) {
     try {
       const specs = {
@@ -668,8 +767,18 @@ app.post("/api/products/:slug/edit", async (req, res) => {
   res.json({ success: true, simulated: true });
 });
 
-// 5. Delete Product Entry
+// 5. Delete Product Entry - WITH ADMIN VALIDATION
 app.delete("/api/products/:slug/delete", async (req, res) => {
+  // Security: Validate admin access
+  const adminEmail = req.headers["x-admin-email"] as string;
+  if (!adminEmail || !isAdminEmail(adminEmail)) {
+    logSecurityEvent("UNAUTHORIZED_PRODUCT_DELETE", { email: adminEmail, slug: req.params.slug });
+    return res.status(403).json({
+      success: false,
+      error: "Access denied. Administrator privileges required."
+    });
+  }
+
   if (supabase) {
     try {
       const { error } = await supabase
@@ -694,14 +803,43 @@ app.delete("/api/products/:slug/delete", async (req, res) => {
   res.json({ success: true, simulated: true });
 });
 
-// 6. Dynamic File Upload (Supabase Storage bucket routing)
+// 6. Dynamic File Upload (Supabase Storage bucket routing) - WITH SECURITY VALIDATION
 app.post("/api/upload", async (req, res) => {
+  // Security: Validate admin access
+  const adminEmail = req.headers["x-admin-email"] as string;
+  if (!adminEmail || !isAdminEmail(adminEmail)) {
+    logSecurityEvent("UNAUTHORIZED_FILE_UPLOAD", { email: adminEmail });
+    return res.status(403).json({
+      success: false,
+      error: "Access denied. Administrator privileges required."
+    });
+  }
+
   try {
     const rawFileName = req.query.fileName || req.query.filename || req.headers["x-file-name"] || "uploaded-jewelry.glb";
-    const fileName = decodeURIComponent(rawFileName as string);
     const fileType = req.headers["content-type"] || "model/gltf-binary";
+
+    // Security: Validate MIME type
+    if (!validateMimeType(fileType)) {
+      logSecurityEvent("INVALID_MIME_UPLOAD", { mimeType: fileType, email: adminEmail });
+      return res.status(400).json({
+        success: false,
+        error: `File type '${fileType}' is not allowed. Allowed types: image/jpeg, image/png, image/webp, model/gltf-binary`
+      });
+    }
+
+    // Security: Sanitize and validate file name
+    const fileNameRaw = decodeURIComponent(rawFileName as string);
+    if (!validateFileExtension(fileNameRaw)) {
+      logSecurityEvent("INVALID_EXTENSION_UPLOAD", { fileName: fileNameRaw, email: adminEmail });
+      return res.status(400).json({
+        success: false,
+        error: "File extension not allowed."
+      });
+    }
+
     const uniqueId = `asteya-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
-    const cleanName = fileName.replace(/[^a-zA-Z0-9.-]/g, "_");
+    const cleanName = sanitizeFileName(fileNameRaw);
     const storagePath = `public/${uniqueId}_${cleanName}`;
 
     const chunks: Buffer[] = [];
@@ -714,8 +852,14 @@ app.post("/api/upload", async (req, res) => {
       try {
         const buffer = Buffer.concat(chunks);
 
+        // Security: File size validation (max 50MB)
         if (buffer.length === 0) {
           return res.status(400).json({ success: false, error: "Empty file body provided." });
+        }
+
+        if (buffer.length > 50 * 1024 * 1024) {
+          logSecurityEvent("FILE_TOO_LARGE", { size: buffer.length, email: adminEmail });
+          return res.status(400).json({ success: false, error: "File exceeds 50MB limit." });
         }
 
         if (supabase) {
@@ -868,6 +1012,13 @@ app.post("/api/ai/classify", async (req, res) => {
       estimatedCaratWeight = parsedJson.caratWeight || estimatedCaratWeight;
       detectedBackground = parsedJson.backgroundColor || detectedBackground;
       detectedBoundingBox = parsedJson.boundingBox || detectedBoundingBox;
+
+      if (isSafetyRefusal(suggestedName)) {
+        suggestedName = "Bespoke Royal Creation";
+      }
+      if (isSafetyRefusal(luxuryDescription)) {
+        luxuryDescription = "A masterpiece of custom haute joaillerie, handcrafted inside our Parisian ateliers.";
+      }
     } catch (jsonErr) {
       console.warn("Could not completely parse JSON response from AI Engine, using fallbacks.", jsonErr);
     }
@@ -982,7 +1133,21 @@ app.post("/api/ai/tryon", async (req, res) => {
       }
     } catch (jsonErr) {
       console.warn("Could not completely parse JSON response from AI Engine Tryon, parsing flat text.", jsonErr);
-      responseText = responseTextResult;
+      if (isSafetyRefusal(responseTextResult)) {
+        responseText = "";
+      } else {
+        responseText = responseTextResult;
+      }
+    }
+
+    if (isSafetyRefusal(responseText)) {
+      responseText = "";
+    }
+    if (isSafetyRefusal(faceShapeResult)) {
+      faceShapeResult = "Oval / Cinematic Grace";
+    }
+    if (isSafetyRefusal(stylistQuoteResult)) {
+      stylistQuoteResult = "A stunning synergy between your feature alignment and the product's structure.";
     }
   } catch (err) {
     console.error("ASTEYA AI error querying AI Engine Vision Tryon:", err);
@@ -1033,44 +1198,51 @@ app.post("/api/ai/avatar", async (req, res) => {
   let recommendedCollectionsResult = ["Imperial Aura", "Stellar Orbit"];
   let descriptionResult = "";
 
-  if (ai) {
+  try {
+    const prompt = `
+You are ASTEYA's Brand Director and AI Haute Stylist.
+The VIP Member is crafting their digital Haute Joaillerie profile.
+- Style Archetype chosen: ${archetype} (e.g., Boldly Sovereign, Quiet Luxury, Midnight Avant-Garde, Celestial Wanderer).
+- Desired Gemology Focus: ${focusArea} (e.g., Flawless Diamonds, Raw Amethyst, Vivid Emeralds, High Rose Gold).
+- Additional Mood Inputs: ${preferences || "No specific preferences, general high-fashion art."}
+
+Generate an opulent, poetic, highly sophisticated Member Identity Persona profile write-up for this VIP.
+Return your results strictly in a valid JSON block with these keys (no markdown wrapping, no extra text):
+{
+  "signatureStyle": "A three-word high-end couture style label name",
+  "description": "A highly creative, cinematic paragraph (4 sentences) characterizing their style aura, how they command attention in candlelit galas, and how their metal-of-choice echoes their inner nobility",
+  "recommendedCollections": ["Imperial Aura", "Stellar Orbit"],
+  "aestheticCompatibilityScore": 97
+}
+`;
+
+    const responseText = await callAIEngine({
+      prompt,
+      jsonMode: true
+    });
+
     try {
-      const prompt = `
-        You are ASTEYA's Brand Director and AI Haute Stylist.
-        The VIP Member is crafting their digital Haute Joaillerie profile.
-        - Style Archetype chosen: ${archetype} (e.g., Boldly Sovereign, Quiet Luxury, Midnight Avant-Garde, Celestial Wanderer).
-        - Desired Gemology Focus: ${focusArea} (e.g., Flawless Diamonds, Raw Amethyst, Vivid Emeralds, High Rose Gold).
-        - Additional Mood Inputs: ${preferences || "No specific preferences, general high-fashion art."}
-
-        Generate an opulent, poetic, highly sophisticated Member Identity Persona profile write-up for this VIP.
-        Return your results strictly in a JSON block with these keys:
-        1. "signatureStyle": A three-word high-end couture style label name.
-        2. "description": A highly creative, cinematic paragraph (4 sentences) characterizing their style aura, how they command attention in candlelit galas, and how their metal-of-choice echoes their inner nobility.
-        3. "recommendedCollections": An array of 2 collections from ASTEYA's catalog (e.g. 'Imperial Aura', 'Stellar Orbit', 'Elysian Forest', 'Dynasty') that fit.
-        4. "aestheticCompatibilityScore": A percentage integer between 94% and 99%.
-      `;
-
-      const response = await ai.models.generateContent({
-        model: "gemini-3.5-flash",
-        contents: prompt,
-        config: {
-          responseMimeType: "application/json",
-        },
-      });
-
-      const parsedText = response.text ? response.text.trim() : "";
-      try {
-        const parsedJson = JSON.parse(parsedText);
-        signatureStyleResult = parsedJson.signatureStyle || signatureStyleResult;
-        descriptionResult = parsedJson.description || descriptionResult;
-        recommendedCollectionsResult = parsedJson.recommendedCollections || recommendedCollectionsResult;
-      } catch (e) {
-        console.warn("Avatar JSON parse failed, utilizing fallback text extraction.", e);
-        descriptionResult = parsedText;
-      }
+      const parsedJson = JSON.parse(responseText);
+      signatureStyleResult = parsedJson.signatureStyle || signatureStyleResult;
+      descriptionResult = parsedJson.description || descriptionResult;
+      recommendedCollectionsResult = parsedJson.recommendedCollections || recommendedCollectionsResult;
     } catch (e) {
-      console.error("AI Avatar generator call failed:", e);
+      console.warn("Avatar JSON parse failed, utilizing fallback text extraction.", e);
+      if (isSafetyRefusal(responseText)) {
+        descriptionResult = "";
+      } else {
+        descriptionResult = responseText;
+      }
     }
+
+    if (isSafetyRefusal(descriptionResult)) {
+      descriptionResult = "";
+    }
+    if (isSafetyRefusal(signatureStyleResult)) {
+      signatureStyleResult = "Sovereign Avant-Garde";
+    }
+  } catch (e) {
+    console.error("AI Avatar generator call failed:", e);
   }
 
   if (!descriptionResult) {
@@ -1078,7 +1250,7 @@ app.post("/api/ai/avatar", async (req, res) => {
   }
 
   // Select a stunning curated portrait based on chosen archetype to serve as the user's high-fashion AI Avatar profile picture!
-  let avatarUrl = "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&q=80&w=400"; // portrait
+  let avatarUrl = "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&q=80&w=400";
   if (archetype === "Quiet Luxury") {
     avatarUrl = "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&q=80&w=400";
   } else if (archetype === "Midnight Avant-Garde") {
@@ -1100,7 +1272,7 @@ app.post("/api/ai/avatar", async (req, res) => {
 // 6. AI Aesthetic Concierge (Budget + Outfit + Skin Assessment Product Allocator)
 app.post("/api/ai/concierge", async (req, res) => {
   const { budget, outfitImage, skinImage, outfitColor, outfitSwatches, criteria } = req.body;
-  
+
   if (budget === undefined || budget === null) {
     return res.status(400).json({ error: "Maximum budget parameter is required." });
   }
@@ -1135,108 +1307,125 @@ app.post("/api/ai/concierge", async (req, res) => {
 
   let finalResponseJson: any = null;
 
-  if (ai) {
-    try {
-      const contents: any[] = [];
+  try {
+    const productSummary = activeProducts.map(p =>
+      `ID: ${p.id}, Name: ${p.name}, Price: ₹${p.price}, Category: ${p.category}, Collection: ${p.collection}, Description: ${p.description}, Materials: ${p.materials.join(", ")}`
+    ).join("\n");
 
-      if (useOutfit && outfitImage && outfitImage.startsWith("data:image/")) {
-        const cleanOutfit = outfitImage.replace(/^data:image\/\w+;base64,/, "");
-        contents.push({
-          inlineData: {
-            mimeType: "image/jpeg",
-            data: cleanOutfit
-          }
-        });
-      } else if (useOutfit && outfitImage) {
-        contents.push(`The user's selected outfit: ${outfitImage}. Please use this style context.`);
-      }
+    let visionPrompt = `You are ASTEYA's Grand Concierge Director, Chief Color Analyst, and Haute Joaillerie Stylist.
 
-      if (useSkin && skinImage && skinImage.startsWith("data:image/")) {
-        const cleanSkin = skinImage.replace(/^data:image\/\w+;base64,/, "");
-        contents.push({
-          inlineData: {
-            mimeType: "image/jpeg",
-            data: cleanSkin
-          }
-        });
-      } else if (useSkin && skinImage) {
-        contents.push(`The user's selected skin tone: ${skinImage}. Please use this skin tone context.`);
-      }
+The user has engaged the AI Concierge for personalized jewelry allocation:
+${useBudget ? `- Maximum Spending Limit (Budget): ₹${budget} INR. (You MUST strictly recommend products whose price is LESS THAN OR EQUAL TO this maximum budget. If no products in the catalog are under this maximum budget cap, you MUST return recommendedProductIds as an empty array [])` : "- No Budget constraints selected."}
+${useOutfit && outfitImage ? "- One image of their outfit selection is provided." : ""}
+${useSkin && skinImage ? "- One image of their face/skin profile is provided." : ""}
 
-      const productSummary = activeProducts.map(p => 
-        `ID: ${p.id}, Name: ${p.name}, Price: ₹${p.price}, Category: ${p.category}, Collection: ${p.collection}, Description: ${p.description}, Materials: ${p.materials.join(", ")}`
-      ).join("\n");
+Available Catalog Products:
+${productSummary}
 
-      const prompt = `
-        You are ASTEYA's Grand Concierge Director, Chief Color Analyst, and Haute Joaillerie Stylist.
-        
-        The user has engaged the AI Concierge for personalized jewelry allocation:
-        ${useBudget ? `- Maximum Spending Limit (Budget): ₹${budget} INR. (You MUST strictly recommend products whose price is LESS THAN OR EQUAL TO this maximum budget. If no products in the catalog are under this maximum budget cap, you MUST return recommendedProductIds as an empty array [])` : "- No Budget constraints selected."}
-        - We have provided up to two images:
-          ${(useOutfit && outfitImage) ? "- One image of their outfit selection." : ""}
-          ${(useSkin && skinImage) ? "- One image of their face/skin profile." : ""}
-        
-        Available Catalog Products:
-        ${productSummary}
+${useOutfit ? "Analyze the uploaded outfit image (if provided) to extract color harmony, styling textures, and look aura. Ensure recommended items complement the color and shape of the dress beautifully. Avoid colors that clash with the dress color." : "Do not perform outfit color matching; recommend neutral elegant designs."}
+${useSkin ? "Analyze the uploaded skin profile image (if provided) to determine undertones, skin warmth, and the most flattering metal alloys (Yellow Gold, White Gold, Rose Gold)." : "Do not perform skin tone matching."}
 
-        ${useOutfit ? "Analyze the uploaded outfit image (if provided) to extract color harmony, styling textures, and look aura. Ensure recommended items complement the color and shape of the dress beautifully. Avoid colors that clash with the dress color." : "Do not perform outfit color matching; recommend neutral elegant designs."}
-        ${useSkin ? "Analyze the uploaded skin profile image (if provided) to determine undertones, skin warmth, and the most flattering metal alloys (Yellow Gold, White Gold, Rose Gold)." : "Do not perform skin tone matching."}
+Recommend ALL matching products from our catalog that fit the user's styling matches and are strictly under their budget constraint (if budget limit is enabled). If no products fit the constraints, return recommendedProductIds as an empty array [].
 
-        Recommend ALL matching products from our catalog that fit the user's styling matches and are strictly under their budget constraint (if budget limit is enabled). If no products fit the constraints, return recommendedProductIds as an empty array []—do NOT recommend products that violate the filters.
+Provide your assessment strictly in a valid JSON structure with these exact keys (no markdown, no extra text):
+{
+  "undertone": "Warm Golden Undertone or Cool Alabaster or Neutral Honey",
+  "metalRecommendation": "Polished 18K Yellow Gold or Rhodium Plating / Champagne White Gold",
+  "skinRationale": "2-3 sentences detailing skin tone and metal pairing",
+  "dominantColors": ["Deep Emerald", "Gold Filigree"],
+  "styleMatchAura": "Regal Evening / Traditional Festive or Quiet Luxury / Corporate Power",
+  "outfitRationale": "2-3 sentences detailing how the outfit coordinates with jewelry shapes",
+  "stylistCritique": "opulent, poetic styling summary",
+  "recommendedProductIds": ["prod-1", "prod-2"]
+}`;
 
-        Provide your assessment strictly in a clear, formatted JSON structure containing these exact keys:
-        {
-          "undertone": string (e.g. "Warm Golden Undertone" or "Cool Alabaster" or "Neutral Honey"),
-          "metalRecommendation": string (e.g. "Polished 18K Yellow Gold" or "Rhodium Plating / Champagne White Gold"),
-          "skinRationale": string (2-3 sentences detailing skin tone and metal pairing),
-          "dominantColors": string[] (array of colors detected in the outfit, e.g. ["Deep Emerald", "Gold Filigree", "Burgundy Velvet"]),
-          "styleMatchAura": string (e.g. "Regal Evening / Traditional Festive" or "Quiet Luxury / Corporate Power"),
-          "outfitRationale": string (2-3 sentences detailing how the outfit coordinates with jewelry shapes),
-          "stylistCritique": string (opulent, poetic styling summary of the allocated jewelry styling set),
-          "recommendedProductIds": string[] (array of product IDs from the catalog that match, STRICTLY matching all checked filters)
-        }
-      `;
-      contents.push(prompt);
-
-      const response = await ai.models.generateContent({
-        model: "gemini-2.5-flash",
-        contents: contents,
-        config: {
-          responseMimeType: "application/json",
-        },
-      });
-
-      const parsedText = response.text ? response.text.trim() : "";
-      try {
-        finalResponseJson = JSON.parse(parsedText);
-        console.log("ASTEYA AI Concierge: Allocation completed successfully.");
-      } catch (jsonErr) {
-        console.warn("ASTEYA AI Concierge: JSON parse failed. Utilizing fallback mechanism.", jsonErr);
-      }
-    } catch (aiErr) {
-      console.error("ASTEYA AI Concierge: Gemini API call failed:", aiErr);
+    let imageBase64: string | undefined = undefined;
+    if (useOutfit && outfitImage) {
+      imageBase64 = outfitImage;
+    } else if (useSkin && skinImage) {
+      imageBase64 = skinImage;
     }
+
+    const responseText = await callAIEngine({
+      prompt: visionPrompt,
+      visionPrompt: visionPrompt,
+      imageBase64,
+      jsonMode: true
+    });
+
+    try {
+      if (isSafetyRefusal(responseText)) {
+        finalResponseJson = null;
+        console.warn("ASTEYA AI Concierge: NVIDIA NIM returned safety refusal, utilizing fallback mechanism.");
+      } else {
+        finalResponseJson = JSON.parse(responseText);
+        console.log("ASTEYA AI Concierge: Allocation completed successfully.");
+      }
+    } catch (jsonErr) {
+      console.warn("ASTEYA AI Concierge: JSON parse failed. Utilizing fallback mechanism.", jsonErr);
+    }
+  } catch (aiErr) {
+    console.error("ASTEYA AI Concierge: NVIDIA NIM API call failed:", aiErr);
   }
 
-  // Robust Fallback Builder if Gemini was offline, not configured, or returned invalid layout
+  // Robust Fallback Builder if AI was offline, not configured, or returned invalid layout
   if (!finalResponseJson) {
     const affordable = useBudget ? activeProducts.filter(p => p.price <= budget) : activeProducts;
     
-    // Fit matching: match color of the dress if outfit matching is enabled
+    // Fit matching: match color of the dress dynamically if outfit matching is enabled
     let matchingProducts = affordable;
     if (useOutfit) {
       const colorQuery = (outfitColor || outfitImage || "").toLowerCase();
       if (colorQuery.includes("emerald") || colorQuery.includes("green")) {
-        matchingProducts = affordable.filter(p => p.id === "prod-4" || p.id === "prod-3" || p.id === "prod-5" || p.id === "prod-2" || p.id === "prod-6");
-      } else if (colorQuery.includes("crimson") || colorQuery.includes("red")) {
-        matchingProducts = affordable.filter(p => p.id === "prod-1" || p.id === "prod-2" || p.id === "prod-3" || p.id === "prod-5" || p.id === "prod-6");
+        matchingProducts = affordable.filter(p => 
+          p.name.toLowerCase().includes("emerald") || 
+          p.name.toLowerCase().includes("green") ||
+          p.description.toLowerCase().includes("emerald") || 
+          p.description.toLowerCase().includes("green") ||
+          p.materials.some((m: string) => m.toLowerCase().includes("emerald") || m.toLowerCase().includes("green"))
+        );
+      } else if (colorQuery.includes("crimson") || colorQuery.includes("red") || colorQuery.includes("ruby")) {
+        matchingProducts = affordable.filter(p => 
+          p.name.toLowerCase().includes("red") || 
+          p.name.toLowerCase().includes("crimson") ||
+          p.name.toLowerCase().includes("ruby") ||
+          p.name.toLowerCase().includes("amethyst") ||
+          p.description.toLowerCase().includes("red") || 
+          p.description.toLowerCase().includes("crimson") ||
+          p.description.toLowerCase().includes("ruby") ||
+          p.materials.some((m: string) => m.toLowerCase().includes("red") || m.toLowerCase().includes("crimson") || m.toLowerCase().includes("ruby"))
+        );
       } else if (colorQuery.includes("champagne") || colorQuery.includes("gold")) {
-        matchingProducts = affordable.filter(p => p.id === "prod-3" || p.id === "prod-5" || p.id === "prod-1" || p.id === "prod-2" || p.id === "prod-6");
-      } else if (colorQuery.includes("white") || colorQuery.includes("ivory") || colorQuery.includes("pearl")) {
-        // White matches all catalog items! It is a neutral luxury drape that highlights all gems and gold.
-        matchingProducts = affordable;
+        matchingProducts = affordable.filter(p => 
+          p.name.toLowerCase().includes("gold") || 
+          p.description.toLowerCase().includes("gold") ||
+          p.materials.some((m: string) => m.toLowerCase().includes("gold"))
+        );
+      } else if (colorQuery.includes("white") || colorQuery.includes("ivory") || colorQuery.includes("pearl") || colorQuery.includes("silver") || colorQuery.includes("diamond") || colorQuery.includes("ear")) {
+        // White matches neutral items containing pearl, diamond, silver, white, or name "ear"
+        matchingProducts = affordable.filter(p => 
+          p.name.toLowerCase().includes("white") || 
+          p.name.toLowerCase().includes("pearl") || 
+          p.name.toLowerCase().includes("diamond") ||
+          p.name.toLowerCase().includes("silver") ||
+          p.name.toLowerCase().includes("ear") ||
+          p.description.toLowerCase().includes("white") || 
+          p.description.toLowerCase().includes("pearl") ||
+          p.description.toLowerCase().includes("diamond") ||
+          p.description.toLowerCase().includes("ear")
+        );
       } else if (colorQuery.includes("sapphire") || colorQuery.includes("blue")) {
-        matchingProducts = affordable.filter(p => p.id === "prod-2" || p.id === "prod-6" || p.id === "prod-3" || p.id === "prod-5" || p.id === "prod-1");
+        matchingProducts = affordable.filter(p => 
+          p.name.toLowerCase().includes("blue") || 
+          p.name.toLowerCase().includes("sapphire") ||
+          p.description.toLowerCase().includes("blue") || 
+          p.description.toLowerCase().includes("sapphire")
+        );
+      }
+
+      // If no specific color query matches, default to all affordable products
+      if (matchingProducts.length === 0) {
+        matchingProducts = affordable;
       }
     }
 
@@ -1258,6 +1447,103 @@ app.post("/api/ai/concierge", async (req, res) => {
         : `All of our luxury master creations currently exceed your entered maximum budget cap of ₹${budget}. We invite you to refine your filters or explore our entry-level creations starting at ₹2,950.`,
       recommendedProductIds: ids
     };
+  }
+
+  // 1. Post-process recommendedProductIds: filter out invalid ones that do not exist in catalog
+  if (finalResponseJson) {
+    const activeIds = new Set(activeProducts.map(p => p.id));
+    if (finalResponseJson.recommendedProductIds) {
+      finalResponseJson.recommendedProductIds = finalResponseJson.recommendedProductIds.filter((id: string) => activeIds.has(id));
+    } else {
+      finalResponseJson.recommendedProductIds = [];
+    }
+
+    // 2. If recommendedProductIds is empty, run the dynamic fallback matcher against activeProducts to find valid matches
+    if (finalResponseJson.recommendedProductIds.length === 0) {
+      const affordable = useBudget ? activeProducts.filter(p => p.price <= budget) : activeProducts;
+      let matchingProducts = affordable;
+      if (useOutfit) {
+        const colorQuery = (outfitColor || outfitImage || "").toLowerCase();
+        if (colorQuery.includes("emerald") || colorQuery.includes("green")) {
+          matchingProducts = affordable.filter(p => 
+            p.name.toLowerCase().includes("emerald") || 
+            p.name.toLowerCase().includes("green") ||
+            p.description.toLowerCase().includes("emerald") || 
+            p.description.toLowerCase().includes("green") ||
+            p.materials.some((m: string) => m.toLowerCase().includes("emerald") || m.toLowerCase().includes("green"))
+          );
+        } else if (colorQuery.includes("crimson") || colorQuery.includes("red") || colorQuery.includes("ruby")) {
+          matchingProducts = affordable.filter(p => 
+            p.name.toLowerCase().includes("red") || 
+            p.name.toLowerCase().includes("crimson") ||
+            p.name.toLowerCase().includes("ruby") ||
+            p.name.toLowerCase().includes("amethyst") ||
+            p.description.toLowerCase().includes("red") || 
+            p.description.toLowerCase().includes("crimson") ||
+            p.description.toLowerCase().includes("ruby") ||
+            p.materials.some((m: string) => m.toLowerCase().includes("red") || m.toLowerCase().includes("crimson") || m.toLowerCase().includes("ruby"))
+          );
+        } else if (colorQuery.includes("champagne") || colorQuery.includes("gold")) {
+          matchingProducts = affordable.filter(p => 
+            p.name.toLowerCase().includes("gold") || 
+            p.description.toLowerCase().includes("gold") ||
+            p.materials.some((m: string) => m.toLowerCase().includes("gold"))
+          );
+        } else if (colorQuery.includes("white") || colorQuery.includes("ivory") || colorQuery.includes("pearl") || colorQuery.includes("silver") || colorQuery.includes("diamond") || colorQuery.includes("ear")) {
+          matchingProducts = affordable.filter(p => 
+            p.name.toLowerCase().includes("white") || 
+            p.name.toLowerCase().includes("pearl") || 
+            p.name.toLowerCase().includes("diamond") ||
+            p.name.toLowerCase().includes("silver") ||
+            p.name.toLowerCase().includes("ear") ||
+            p.description.toLowerCase().includes("white") || 
+            p.description.toLowerCase().includes("pearl") ||
+            p.description.toLowerCase().includes("diamond") ||
+            p.description.toLowerCase().includes("ear")
+          );
+        } else if (colorQuery.includes("sapphire") || colorQuery.includes("blue")) {
+          matchingProducts = affordable.filter(p => 
+            p.name.toLowerCase().includes("blue") || 
+            p.name.toLowerCase().includes("sapphire") ||
+            p.description.toLowerCase().includes("blue") || 
+            p.description.toLowerCase().includes("sapphire")
+          );
+        }
+        
+        if (matchingProducts.length === 0) {
+          matchingProducts = affordable;
+        }
+      }
+      finalResponseJson.recommendedProductIds = matchingProducts.map(p => p.id);
+    }
+
+    // 3. Enforce criteria overrides and check safety refusals
+    if (useSkin && isSafetyRefusal(finalResponseJson.skinRationale)) {
+      finalResponseJson.skinRationale = "The luminous texture of your skin coordinates naturally with classic warm gold jewelry accents. Asteya's custom handcrafting reflects premium light frequencies, accentuating skin radiance.";
+    }
+    if (!useSkin) {
+      finalResponseJson.undertone = "Curation Custom Select";
+      finalResponseJson.metalRecommendation = "Atelier Precious Alloys";
+      finalResponseJson.skinRationale = "Skin undertone assessment bypassed by client.";
+    }
+
+    if (useOutfit && isSafetyRefusal(finalResponseJson.outfitRationale)) {
+      finalResponseJson.outfitRationale = `The structural silhouette of the dress in ${outfitColor || "custom shade"} coordinates excellently with clean, circular metal architectures and suspended teardrop simulations.`;
+    }
+    if (!useOutfit) {
+      finalResponseJson.styleMatchAura = "Classic Signature Selection";
+      finalResponseJson.outfitRationale = "Outfit matching bypassed by client.";
+      finalResponseJson.dominantColors = ["Bespoke Gold", "Silver Sparkles"];
+    }
+
+    if (isSafetyRefusal(finalResponseJson.stylistCritique)) {
+      finalResponseJson.stylistCritique = `An outstanding premium styling allocation matching the maximum budget limit of ₹${budget}. By coordinating delicate simulated stones and warm precious metals, these hand-selected pieces present an impeccable aesthetic balance of traditional pride and contemporary luxury.`;
+    }
+    if (!useBudget) {
+      if (finalResponseJson.stylistCritique && (finalResponseJson.stylistCritique.includes("999999") || finalResponseJson.stylistCritique.toLowerCase().includes("budget cap") || finalResponseJson.stylistCritique.toLowerCase().includes("maximum budget limit"))) {
+        finalResponseJson.stylistCritique = `A grand styling allocation based entirely on coordinated attire aesthetics, presenting the absolute pinnacle of Asteya's design.`;
+      }
+    }
   }
 
   // Hard backend post-filtering to guarantee budget rules are never bypassed by AI hallucinations
