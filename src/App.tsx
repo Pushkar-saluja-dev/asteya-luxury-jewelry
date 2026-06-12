@@ -27,18 +27,27 @@ function ScrollReveal({ children, delay = 0, className = "" }: { children: React
     const element = ref.current;
     if (!element) return;
 
+    // Fallback: guarantee visibility after a delay if IntersectionObserver fails on mobile
+    const timer = setTimeout(() => {
+      setIsVisible(true);
+    }, 1500);
+
     const observer = new IntersectionObserver(
       ([entry]) => {
         if (entry.isIntersecting) {
           setIsVisible(true);
+          clearTimeout(timer);
           observer.unobserve(element);
         }
       },
-      { threshold: 0.1, rootMargin: "-50px" }
+      { threshold: 0.05, rootMargin: "0px" }
     );
 
     observer.observe(element);
-    return () => observer.disconnect();
+    return () => {
+      clearTimeout(timer);
+      observer.disconnect();
+    };
   }, []);
 
   return (

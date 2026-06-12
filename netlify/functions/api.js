@@ -60834,6 +60834,11 @@ var callAIEngine = async (params) => {
   }
   throw new Error("NVIDIA NIM AI Engine is not configured. Please add a valid NVIDIA_API_KEY to your environment.");
 };
+var isSafetyRefusal = (text) => {
+  if (!text) return false;
+  const lower = text.toLowerCase();
+  return lower.includes("cannot provide") || lower.includes("not appropriate") || lower.includes("ethical to create") || lower.includes("against safety") || lower.includes("adults and minors") || lower.includes("sexual context") || lower.includes("promotes or glorifies") || lower.includes("i'm sorry") || lower.includes("i cannot") || lower.includes("i am unable");
+};
 var supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || "";
 var supabaseAnonKey = process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || "";
 var isSupabaseConfigured = !!(supabaseUrl && supabaseAnonKey);
@@ -61520,6 +61525,12 @@ app.post("/api/ai/classify", async (req, res) => {
       estimatedCaratWeight = parsedJson.caratWeight || estimatedCaratWeight;
       detectedBackground = parsedJson.backgroundColor || detectedBackground;
       detectedBoundingBox = parsedJson.boundingBox || detectedBoundingBox;
+      if (isSafetyRefusal(suggestedName)) {
+        suggestedName = "Bespoke Royal Creation";
+      }
+      if (isSafetyRefusal(luxuryDescription)) {
+        luxuryDescription = "A masterpiece of custom haute joaillerie, handcrafted inside our Parisian ateliers.";
+      }
     } catch (jsonErr) {
       console.warn("Could not completely parse JSON response from AI Engine, using fallbacks.", jsonErr);
     }
@@ -61623,7 +61634,20 @@ app.post("/api/ai/tryon", async (req, res) => {
       }
     } catch (jsonErr) {
       console.warn("Could not completely parse JSON response from AI Engine Tryon, parsing flat text.", jsonErr);
-      responseText = responseTextResult;
+      if (isSafetyRefusal(responseTextResult)) {
+        responseText = "";
+      } else {
+        responseText = responseTextResult;
+      }
+    }
+    if (isSafetyRefusal(responseText)) {
+      responseText = "";
+    }
+    if (isSafetyRefusal(faceShapeResult)) {
+      faceShapeResult = "Oval / Cinematic Grace";
+    }
+    if (isSafetyRefusal(stylistQuoteResult)) {
+      stylistQuoteResult = "A stunning synergy between your feature alignment and the product's structure.";
     }
   } catch (err) {
     console.error("ASTEYA AI error querying AI Engine Vision Tryon:", err);
@@ -61691,7 +61715,17 @@ Return your results strictly in a valid JSON block with these keys (no markdown 
       recommendedCollectionsResult = parsedJson.recommendedCollections || recommendedCollectionsResult;
     } catch (e) {
       console.warn("Avatar JSON parse failed, utilizing fallback text extraction.", e);
-      descriptionResult = responseText;
+      if (isSafetyRefusal(responseText)) {
+        descriptionResult = "";
+      } else {
+        descriptionResult = responseText;
+      }
+    }
+    if (isSafetyRefusal(descriptionResult)) {
+      descriptionResult = "";
+    }
+    if (isSafetyRefusal(signatureStyleResult)) {
+      signatureStyleResult = "Sovereign Avant-Garde";
     }
   } catch (e) {
     console.error("AI Avatar generator call failed:", e);
@@ -61777,9 +61811,9 @@ Provide your assessment strictly in a valid JSON structure with these exact keys
   "recommendedProductIds": ["prod-1", "prod-2"]
 }`;
     let imageBase64 = void 0;
-    if (useOutfit && outfitImage && outfitImage.startsWith("data:image/")) {
+    if (useOutfit && outfitImage) {
       imageBase64 = outfitImage;
-    } else if (useSkin && skinImage && skinImage.startsWith("data:image/")) {
+    } else if (useSkin && skinImage) {
       imageBase64 = skinImage;
     }
     const responseText = await callAIEngine({
@@ -61789,8 +61823,13 @@ Provide your assessment strictly in a valid JSON structure with these exact keys
       jsonMode: true
     });
     try {
-      finalResponseJson = JSON.parse(responseText);
-      console.log("ASTEYA AI Concierge: Allocation completed successfully.");
+      if (isSafetyRefusal(responseText)) {
+        finalResponseJson = null;
+        console.warn("ASTEYA AI Concierge: NVIDIA NIM returned safety refusal, utilizing fallback mechanism.");
+      } else {
+        finalResponseJson = JSON.parse(responseText);
+        console.log("ASTEYA AI Concierge: Allocation completed successfully.");
+      }
     } catch (jsonErr) {
       console.warn("ASTEYA AI Concierge: JSON parse failed. Utilizing fallback mechanism.", jsonErr);
     }
@@ -61838,6 +61877,70 @@ Provide your assessment strictly in a valid JSON structure with these exact keys
       stylistCritique: ids.length > 0 ? `An outstanding premium styling allocation matching the maximum budget limit of \u20B9${budget}. By coordinating delicate simulated stones and warm precious metals, these hand-selected pieces present an impeccable aesthetic balance of traditional pride and contemporary luxury.` : `All of our luxury master creations currently exceed your entered maximum budget cap of \u20B9${budget}. We invite you to refine your filters or explore our entry-level creations starting at \u20B92,950.`,
       recommendedProductIds: ids
     };
+  }
+  if (finalResponseJson) {
+    const activeIds = new Set(activeProducts.map((p) => p.id));
+    if (finalResponseJson.recommendedProductIds) {
+      finalResponseJson.recommendedProductIds = finalResponseJson.recommendedProductIds.filter((id) => activeIds.has(id));
+    } else {
+      finalResponseJson.recommendedProductIds = [];
+    }
+    if (finalResponseJson.recommendedProductIds.length === 0) {
+      const affordable = useBudget ? activeProducts.filter((p) => p.price <= budget) : activeProducts;
+      let matchingProducts = affordable;
+      if (useOutfit) {
+        const colorQuery = (outfitColor || outfitImage || "").toLowerCase();
+        if (colorQuery.includes("emerald") || colorQuery.includes("green")) {
+          matchingProducts = affordable.filter(
+            (p) => p.name.toLowerCase().includes("emerald") || p.name.toLowerCase().includes("green") || p.description.toLowerCase().includes("emerald") || p.description.toLowerCase().includes("green") || p.materials.some((m) => m.toLowerCase().includes("emerald") || m.toLowerCase().includes("green"))
+          );
+        } else if (colorQuery.includes("crimson") || colorQuery.includes("red") || colorQuery.includes("ruby")) {
+          matchingProducts = affordable.filter(
+            (p) => p.name.toLowerCase().includes("red") || p.name.toLowerCase().includes("crimson") || p.name.toLowerCase().includes("ruby") || p.name.toLowerCase().includes("amethyst") || p.description.toLowerCase().includes("red") || p.description.toLowerCase().includes("crimson") || p.description.toLowerCase().includes("ruby") || p.materials.some((m) => m.toLowerCase().includes("red") || m.toLowerCase().includes("crimson") || m.toLowerCase().includes("ruby"))
+          );
+        } else if (colorQuery.includes("champagne") || colorQuery.includes("gold")) {
+          matchingProducts = affordable.filter(
+            (p) => p.name.toLowerCase().includes("gold") || p.description.toLowerCase().includes("gold") || p.materials.some((m) => m.toLowerCase().includes("gold"))
+          );
+        } else if (colorQuery.includes("white") || colorQuery.includes("ivory") || colorQuery.includes("pearl") || colorQuery.includes("silver") || colorQuery.includes("diamond") || colorQuery.includes("ear")) {
+          matchingProducts = affordable.filter(
+            (p) => p.name.toLowerCase().includes("white") || p.name.toLowerCase().includes("pearl") || p.name.toLowerCase().includes("diamond") || p.name.toLowerCase().includes("silver") || p.name.toLowerCase().includes("ear") || p.description.toLowerCase().includes("white") || p.description.toLowerCase().includes("pearl") || p.description.toLowerCase().includes("diamond") || p.description.toLowerCase().includes("ear")
+          );
+        } else if (colorQuery.includes("sapphire") || colorQuery.includes("blue")) {
+          matchingProducts = affordable.filter(
+            (p) => p.name.toLowerCase().includes("blue") || p.name.toLowerCase().includes("sapphire") || p.description.toLowerCase().includes("blue") || p.description.toLowerCase().includes("sapphire")
+          );
+        }
+        if (matchingProducts.length === 0) {
+          matchingProducts = affordable;
+        }
+      }
+      finalResponseJson.recommendedProductIds = matchingProducts.map((p) => p.id);
+    }
+    if (useSkin && isSafetyRefusal(finalResponseJson.skinRationale)) {
+      finalResponseJson.skinRationale = "The luminous texture of your skin coordinates naturally with classic warm gold jewelry accents. Asteya's custom handcrafting reflects premium light frequencies, accentuating skin radiance.";
+    }
+    if (!useSkin) {
+      finalResponseJson.undertone = "Curation Custom Select";
+      finalResponseJson.metalRecommendation = "Atelier Precious Alloys";
+      finalResponseJson.skinRationale = "Skin undertone assessment bypassed by client.";
+    }
+    if (useOutfit && isSafetyRefusal(finalResponseJson.outfitRationale)) {
+      finalResponseJson.outfitRationale = `The structural silhouette of the dress in ${outfitColor || "custom shade"} coordinates excellently with clean, circular metal architectures and suspended teardrop simulations.`;
+    }
+    if (!useOutfit) {
+      finalResponseJson.styleMatchAura = "Classic Signature Selection";
+      finalResponseJson.outfitRationale = "Outfit matching bypassed by client.";
+      finalResponseJson.dominantColors = ["Bespoke Gold", "Silver Sparkles"];
+    }
+    if (isSafetyRefusal(finalResponseJson.stylistCritique)) {
+      finalResponseJson.stylistCritique = `An outstanding premium styling allocation matching the maximum budget limit of \u20B9${budget}. By coordinating delicate simulated stones and warm precious metals, these hand-selected pieces present an impeccable aesthetic balance of traditional pride and contemporary luxury.`;
+    }
+    if (!useBudget) {
+      if (finalResponseJson.stylistCritique && (finalResponseJson.stylistCritique.includes("999999") || finalResponseJson.stylistCritique.toLowerCase().includes("budget cap") || finalResponseJson.stylistCritique.toLowerCase().includes("maximum budget limit"))) {
+        finalResponseJson.stylistCritique = `A grand styling allocation based entirely on coordinated attire aesthetics, presenting the absolute pinnacle of Asteya's design.`;
+      }
+    }
   }
   if (finalResponseJson && finalResponseJson.recommendedProductIds) {
     if (useBudget) {

@@ -10,14 +10,39 @@ export default function Hero({ onExplore }: HeroProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const { scrollY } = useScroll();
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
+  const [isMobile, setIsMobile] = useState(false);
 
-  // Parallax transforms based on scroll
-  const y1 = useTransform(scrollY, [0, 500], [0, 200]);
-  const y2 = useTransform(scrollY, [0, 500], [0, 150]);
-  const y3 = useTransform(scrollY, [0, 500], [0, 100]);
-  const opacityHero = useTransform(scrollY, [0, 400], [1, 0]);
-  const opacityBg = useTransform(scrollY, [0, 400], [0.15, 0]);
-  const scaleHero = useTransform(scrollY, [0, 400], [1, 0.95]);
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(
+        window.innerWidth < 768 || 
+        /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
+      );
+    };
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
+  }, []);
+
+  // Parallax transforms based on scroll (disabled on mobile to prevent layout issues)
+  const y1 = useTransform(scrollY, (value) => isMobile ? 0 : value * 0.4);
+  const y2 = useTransform(scrollY, (value) => isMobile ? 0 : value * 0.3);
+  const y3 = useTransform(scrollY, (value) => isMobile ? 0 : value * 0.2);
+
+  const opacityHero = useTransform(scrollY, (value) => {
+    if (isMobile) return 1;
+    return Math.max(0, 1 - value / 400);
+  });
+
+  const opacityBg = useTransform(scrollY, (value) => {
+    if (isMobile) return 0.15;
+    return Math.max(0, 0.15 * (1 - value / 400));
+  });
+
+  const scaleHero = useTransform(scrollY, (value) => {
+    if (isMobile) return 1;
+    return Math.max(0.95, 1 - (value / 400) * 0.05);
+  });
 
   // Smooth mouse follow for spotlight effect
   const mouseX = useSpring(mousePosition.x, { stiffness: 100, damping: 30 });

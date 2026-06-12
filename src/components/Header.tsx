@@ -32,6 +32,7 @@ export default function Header({
   const headerOpacity = useTransform(scrollY, [0, 100], [0.35, 0.95]);
   const headerBlur = useTransform(scrollY, [0, 100], [8, 20]);
   const headerY = useTransform(scrollY, [0, 100], [0, -10]);
+  const backdropFilterString = useTransform(headerBlur, (v) => `blur(${v}px)`);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -53,7 +54,11 @@ export default function Header({
   return (
     <>
       <motion.div
-        style={{ opacity: headerOpacity, backdropFilter: `blur(${headerBlur}px)` }}
+        style={{
+          opacity: headerOpacity,
+          backdropFilter: backdropFilterString,
+          WebkitBackdropFilter: backdropFilterString
+        }}
         className="fixed top-0 left-0 right-0 h-24 z-40 bg-plum-950 pointer-events-none"
       />
 
