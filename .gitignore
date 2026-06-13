@@ -9,3 +9,16 @@ coverage/
 ECC-new/
 scratch/
 
+# Local Claude Code / MCP tooling
+.mcp.json
+
+# Verification screenshots (generated during iOS Safari Webkit debugging)
+desktop-*.jpeg
+desktop-*.png
+ios-*.png
+iphone-*.jpeg
+iphone-*.png
+
+# Original logo file dropped at repo root (live asset lives in src/assets/asteya-logo.png)
+Asteya_logo-removebg-preview.png
+

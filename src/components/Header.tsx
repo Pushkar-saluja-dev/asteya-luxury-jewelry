@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { ShoppingBag, Heart, User, Sparkles, Menu, X, ShieldCheck, Diamond } from "lucide-react";
 import { motion, AnimatePresence, useScroll, useTransform } from "motion/react";
+import asteaLogo from "../assets/asteya-logo.png";
 import { User as UserType } from "../types";
 import { checkIsAdmin } from "../lib/admin";
 
@@ -30,9 +31,7 @@ export default function Header({
   const { scrollY } = useScroll();
 
   const headerOpacity = useTransform(scrollY, [0, 100], [0.35, 0.95]);
-  const headerBlur = useTransform(scrollY, [0, 100], [8, 20]);
   const headerY = useTransform(scrollY, [0, 100], [0, -10]);
-  const backdropFilterString = useTransform(headerBlur, (v) => `blur(${v}px)`);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -54,12 +53,8 @@ export default function Header({
   return (
     <>
       <motion.div
-        style={{
-          opacity: headerOpacity,
-          backdropFilter: backdropFilterString,
-          WebkitBackdropFilter: backdropFilterString
-        }}
-        className="fixed top-0 left-0 right-0 h-24 z-40 bg-plum-950 pointer-events-none"
+        style={{ opacity: headerOpacity }}
+        className="fixed top-0 left-0 right-0 h-24 z-40 bg-plum-950 pointer-events-none backdrop-blur-md"
       />
 
       <motion.header
@@ -79,31 +74,22 @@ export default function Header({
             aria-label="Open navigation menu"
           >
             <Menu className="w-6 h-6" />
-          </motion.button>
+        </motion.button>
 
           <motion.button
             onClick={() => setActiveTab("catalog")}
-            whileHover={{ scale: 1.02 }}
-            className="cursor-pointer flex flex-col items-center justify-center select-none bg-transparent border-none p-0"
+            whileHover={{ scale: 1.05 }}
+            className="cursor-pointer flex items-center justify-center select-none bg-transparent border-none p-0"
             aria-label="Asteya Home"
           >
-            <motion.span
-              className="font-cinzel text-2xl tracking-[0.3em] font-medium text-gold-classic bg-clip-text text-transparent bg-gradient-to-r from-gold-classic via-gold-light to-gold-dim"
-              animate={{ backgroundPosition: scrolled ? ["0%", "100%"] : "0%" }}
-              transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
-              style={{ backgroundSize: "200%" }}
-            >
-              ASTEYA
-            </motion.span>
-            <motion.span
-              className="text-[7px] tracking-[0.6em] text-gold-pale/60 uppercase font-outfit mt-0.5"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.5 }}
-            >
-              Haute Joaillerie • Paris
-            </motion.span>
-          </motion.button>
+            <motion.img
+              src={asteaLogo}
+              alt="Asteya"
+              id="asteya-logo"
+              className="h-32 md:h-40 w-auto object-contain select-none transition-transform duration-300"
+              draggable={false}
+            />
+        </motion.button>
 
           <nav className="hidden md:flex items-center space-x-8">
             {navItems.map((item) => (
@@ -123,7 +109,7 @@ export default function Header({
                     transition={{ duration: 2, repeat: Infinity, repeatDelay: 3 }}
                   >
                     <Sparkles className="w-3 h-3 text-gold-classic" />
-                  </motion.div>
+                </motion.div>
                 )}
                 {item.admin && <ShieldCheck className="w-3 h-3 text-gold-classic" />}
                 {item.label}
@@ -134,9 +120,9 @@ export default function Header({
                     transition={{ type: "spring", stiffness: 380, damping: 30 }}
                   />
                 )}
-              </motion.button>
+            </motion.button>
             ))}
-          </nav>
+        </nav>
 
           <div className="flex items-center space-x-4 lg:space-x-6">
             <motion.button
@@ -150,11 +136,11 @@ export default function Header({
                 transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
               >
                 <User className="w-4 h-4 text-gold-classic group-hover:scale-110 transition-transform" />
-              </motion.div>
+            </motion.div>
               <span className="hidden lg:inline text-[9px] uppercase tracking-widest font-outfit text-gold-pale">
                 {currentUser ? "My Profile" : "Sign In"}
-              </span>
-            </motion.button>
+            </span>
+          </motion.button>
 
             <motion.button
               onClick={onOpenWishlist}
@@ -168,7 +154,7 @@ export default function Header({
                 transition={{ duration: 0.3 }}
               >
                 <Heart className="w-5 h-5 stroke-[1.5]" />
-              </motion.div>
+            </motion.div>
               <AnimatePresence>
                 {wishlistCount > 0 && (
                   <motion.span
@@ -178,10 +164,10 @@ export default function Header({
                     className="absolute -top-1 -right-1 bg-gradient-to-tr from-gold-dim to-gold-light text-[#120313] text-[9px] font-bold font-outfit w-4.5 h-4.5 rounded-full flex items-center justify-center shadow-gold-glow"
                   >
                     {wishlistCount}
-                  </motion.span>
+                </motion.span>
                 )}
-              </AnimatePresence>
-            </motion.button>
+            </AnimatePresence>
+          </motion.button>
 
             <motion.button
               onClick={onOpenCart}
@@ -200,13 +186,13 @@ export default function Header({
                     className="absolute -top-1 -right-1 bg-gradient-to-tr from-gold-dim to-gold-light text-[#120313] text-[9px] font-bold font-outfit w-4.5 h-4.5 rounded-full flex items-center justify-center shadow-gold-glow"
                   >
                     {cartCount}
-                  </motion.span>
+                </motion.span>
                 )}
-              </AnimatePresence>
-            </motion.button>
-          </div>
+            </AnimatePresence>
+          </motion.button>
         </div>
-      </motion.header>
+      </div>
+    </motion.header>
 
       <AnimatePresence>
         {mobileMenuOpen && (
@@ -219,13 +205,14 @@ export default function Header({
           >
             <div>
               <div className="flex justify-between items-center mb-16">
-                <motion.span
-                  className="font-cinzel text-2xl tracking-widest text-gold-classic"
+                <motion.img
+                  src={asteaLogo}
+                  alt="Asteya"
+                  className="h-40 w-auto object-contain select-none"
+                  draggable={false}
                   animate={{ opacity: [0.5, 1, 0.5] }}
                   transition={{ duration: 2, repeat: Infinity }}
-                >
-                  ASTEYA
-                </motion.span>
+                />
                 <motion.button
                   whileHover={{ scale: 1.1, rotate: 90 }}
                   whileTap={{ scale: 0.9 }}
@@ -233,8 +220,8 @@ export default function Header({
                   onClick={() => setMobileMenuOpen(false)}
                 >
                   <X className="w-6 h-6" />
-                </motion.button>
-              </div>
+              </motion.button>
+            </div>
 
               <div className="flex flex-col space-y-6">
                 {navItems.map((item, index) => (
@@ -254,15 +241,15 @@ export default function Header({
                     {item.icon && <Sparkles className="w-4 h-4 text-gold-classic" />}
                     {item.admin && <ShieldCheck className="w-4 h-4 text-gold-classic" />}
                     {item.label}
-                  </motion.button>
+                </motion.button>
                 ))}
-              </div>
             </div>
+          </div>
 
             <div className="border-t border-gold-classic/10 pt-8 flex flex-col items-center">
               <span className="text-[10px] tracking-widest uppercase font-outfit text-gold-pale/50 mb-4">
                 Exclusive Paris Collection
-              </span>
+            </span>
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.98 }}
@@ -273,11 +260,11 @@ export default function Header({
                 className="w-full text-center py-3 border border-gold-classic/30 rounded-sm text-xs tracking-[0.2em] font-outfit text-gold-pale uppercase hover:bg-gold-classic/10 hover:border-gold-classic/50 transition-all duration-300"
               >
                 View My Profile
-              </motion.button>
-            </div>
-          </motion.div>
+            </motion.button>
+          </div>
+        </motion.div>
         )}
-      </AnimatePresence>
+    </AnimatePresence>
     </>
   );
 }

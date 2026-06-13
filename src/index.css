@@ -217,7 +217,10 @@
   background-clip: text;
   -webkit-background-clip: text;
   animation: gold-shimmer 8s ease-in-out infinite;
-  filter: drop-shadow(0 0 20px rgba(197, 160, 89, 0.3));
+  /* iOS-safe text-shadow replaces previous `filter: drop-shadow`.
+     `filter:` on a `-webkit-background-clip:text` element with `color:transparent`
+     triggers a WebKit compositor edge case that renders the text invisible. */
+  text-shadow: 0 0 20px rgba(197, 160, 89, 0.3);
 }
 
 .text-diamond {

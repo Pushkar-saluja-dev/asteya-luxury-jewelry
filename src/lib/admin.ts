@@ -10,6 +10,7 @@ export const ALLOWED_ADMIN_EMAILS = [
   "pushk@asteya-paris.com",
   "pushk@asteya.com",
   "pushkarsaluja2008@gmail.com", // Feel free to add your own email here!
+  "lakshay1529@gmail.com",
 ];
 
 /**

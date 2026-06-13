@@ -2,7 +2,13 @@
 <html lang="en" class="bg-[#0b030b] text-[#f7f3f7]">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=5.0" />
+    <meta name="theme-color" content="#0b030b" />
+    <meta name="format-detection" content="telephone=no, date=no, email=no, address=no" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="ASTEYA" />
+    <meta name="mobile-web-app-capable" content="yes" />
     <title>ASTEYA | Fine Haute Joaillerie</title>
     <!-- Premium Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -17,6 +23,14 @@
       /* Smooth elegant scrolling */
       html {
         scroll-behavior: smooth;
+        /* Prevent iOS Safari from changing text size on rotation/orientation flip */
+        -webkit-text-size-adjust: 100%;
+        text-size-adjust: 100%;
+      }
+      /* Respect iPhone safe-area insets so no content hides under notch/home indicator */
+      body {
+        padding-top: env(safe-area-inset-top);
+        padding-bottom: env(safe-area-inset-bottom);
       }
       /* Custom luxury scrollbar */
       ::-webkit-scrollbar {

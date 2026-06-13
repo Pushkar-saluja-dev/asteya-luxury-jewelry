@@ -72,7 +72,7 @@ export default function Hero({ onExplore }: HeroProps) {
   return (
     <div
       ref={containerRef}
-      className="relative min-h-screen bg-plum-950 overflow-hidden flex flex-col justify-center items-center px-6 pt-16 luxury-texture bg-radial-luxury"
+      className="relative min-h-[100dvh] bg-plum-950 overflow-hidden flex flex-col justify-center items-center px-6 pt-48 sm:pt-52 md:pt-64 lg:pt-72 luxury-texture bg-radial-luxury"
     >
       {/* Animated background radial glows */}
       <div className="absolute inset-0 z-0 overflow-hidden">
@@ -185,10 +185,11 @@ export default function Hero({ onExplore }: HeroProps) {
           initial={{ opacity: 0, y: 40 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 1.6, delay: 0.3, ease: "easeOut" }}
-          className="font-cinzel text-5xl sm:text-7xl md:text-8xl lg:text-9xl tracking-[0.1em] uppercase text-[#f7f3f7] leading-tight mb-6 drop-shadow-[0_4px_16px_rgba(0,0,0,0.85)]"
+          style={{ textShadow: '0 4px 16px rgba(0,0,0,0.85)' }}
+          className="font-cinzel text-5xl sm:text-7xl md:text-8xl lg:text-9xl tracking-[0.1em] uppercase text-[#f7f3f7] leading-tight mb-6"
         >
           Premium Artisan
-          <span className="block italic text-liquid-gold font-cormorant font-normal lowercase tracking-wide mt-3 drop-shadow-[0_4px_12px_rgba(0,0,0,0.7)]">
+          <span className="block italic text-liquid-gold font-cormorant font-normal lowercase tracking-wide mt-3">
             jewellery
           </span>
         </motion.h1>
