@@ -33,21 +33,24 @@ export default function Hero({ onExplore }: HeroProps) {
 
   // Parallax transforms based on scroll — disabled on mobile or
   // touch-Safari safety mode (where useTransform drops mid-scroll).
-  const y1 = safetyMode || isMobile ? 0 : useTransform(scrollY, (value) => value * 0.4);
-  const y2 = safetyMode || isMobile ? 0 : useTransform(scrollY, (value) => value * 0.3);
-  const y3 = safetyMode || isMobile ? 0 : useTransform(scrollY, (value) => value * 0.2);
+  // Hooks must always run at the top level (React Rules of Hooks);
+  // the (safetyMode || isMobile) check is inside the closure, identical
+  // to the desktop branch's value when both flags are false.
+  const y1 = useTransform(scrollY, (value) => (safetyMode || isMobile) ? 0 : value * 0.4);
+  const y2 = useTransform(scrollY, (value) => (safetyMode || isMobile) ? 0 : value * 0.3);
+  const y3 = useTransform(scrollY, (value) => (safetyMode || isMobile) ? 0 : value * 0.2);
 
-  const opacityHero = safetyMode || isMobile
+  const opacityHero = useTransform(scrollY, (value) => (safetyMode || isMobile)
     ? 1
-    : useTransform(scrollY, (value) => Math.max(0, 1 - value / 400));
+    : Math.max(0, 1 - value / 400));
 
-  const opacityBg = safetyMode || isMobile
+  const opacityBg = useTransform(scrollY, (value) => (safetyMode || isMobile)
     ? 0.15
-    : useTransform(scrollY, (value) => Math.max(0, 0.15 * (1 - value / 400)));
+    : Math.max(0, 0.15 * (1 - value / 400)));
 
-  const scaleHero = safetyMode || isMobile
+  const scaleHero = useTransform(scrollY, (value) => (safetyMode || isMobile)
     ? 1
-    : useTransform(scrollY, (value) => Math.max(0.95, 1 - (value / 400) * 0.05));
+    : Math.max(0.95, 1 - (value / 400) * 0.05));
 
   // Smooth mouse follow for spotlight effect
   const mouseX = useSpring(mousePosition.x, { stiffness: 100, damping: 30 });

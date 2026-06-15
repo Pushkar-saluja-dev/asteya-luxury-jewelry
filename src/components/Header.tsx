@@ -33,12 +33,15 @@ export default function Header({
   const { scrollY } = useScroll();
 
   // iOS Safari: useScroll/useTransform can drop frames on pull-to-refresh,
-  // so gate the dynamic transforms behind a prefers-reduced-motion or
-  // touch-Safari safety switch.
-  const headerOpacity = safetyMode
-    ? 0.95
-    : useTransform(scrollY, [0, 100], [0.35, 0.95]);
-  const headerY = safetyMode ? 0 : useTransform(scrollY, [0, 100], [0, -10]);
+  // so gate the *values* behind a prefers-reduced-motion or touch-Safari
+  // safety switch. The hooks themselves MUST always run at the top level
+  // (React Rules of Hooks) — passing stale MotionValues into motion's
+  // style is safe; skipping the hook call desyncs the hook list and
+  // crashes useInsertionEffect on mobile.
+  const headerOpacityRaw = useTransform(scrollY, [0, 100], [0.35, 0.95]);
+  const headerYRaw = useTransform(scrollY, [0, 100], [0, -10]);
+  const headerOpacity = safetyMode ? 0.95 : headerOpacityRaw;
+  const headerY = safetyMode ? 0 : headerYRaw;
 
   useEffect(() => {
     const handleScroll = () => {

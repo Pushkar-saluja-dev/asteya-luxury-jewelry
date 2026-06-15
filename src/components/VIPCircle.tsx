@@ -62,6 +62,33 @@ function ClerkVIPCircle({ currentUser, onLogin, onLogout }: VIPCircleProps) {
     localStorage.setItem("asteya_pref_necklace_len", necklaceLength);
   }, [necklaceLength]);
 
+  // ---- Rules of Hooks: hooks placed *above* the early-return guards below ----
+  // The `if (!isLoaded) return ...` and `if (!isSignedIn) return ...` branches
+  // would otherwise make these hook calls conditional, desync'ing React's hook
+  // list between renders and crashing `useInsertionEffect` on mobile.
+  //
+  // The effect body is gated by `isSignedIn && user`, so it stays inert during
+  // the very first render when Clerk is still resolving — moving it above the
+  // early returns is safe.
+  useEffect(() => {
+    if (isSignedIn && user) {
+      const email = user.primaryEmailAddress?.emailAddress || "";
+      onLogin(
+        user.fullName || user.firstName || "Exclusive VIP",
+        email,
+        user.imageUrl,
+        checkIsAdmin(email) ? "Imperial Crown VIP" : "Golden Circle",
+        100 // dummy reward points internally but unused visually
+      );
+    }
+  }, [isSignedIn, user]);
+
+  // Profile pic upload (stored in localStorage, overlays Clerk photo)
+  const [localAvatar, setLocalAvatar] = useState<string | null>(
+    () => localStorage.getItem("asteya_profile_pic")
+  );
+  const clerkFileInputRef = useRef<HTMLInputElement>(null);
+
   if (!isLoaded) {
     return (
       <div className="py-24 flex justify-center items-center">
@@ -139,19 +166,6 @@ function ClerkVIPCircle({ currentUser, onLogin, onLogout }: VIPCircleProps) {
   // Synthesize custom Atelier profile metadata for logged-in Clerk user
   const email = user.primaryEmailAddress?.emailAddress || "";
   const isAdmin = checkIsAdmin(email);
-  
-  // Synchronize Clerk authentication details back to main App state
-  useEffect(() => {
-    if (isSignedIn && user) {
-      onLogin(
-        user.fullName || user.firstName || "Exclusive VIP",
-        email,
-        user.imageUrl,
-        isAdmin ? "Imperial Crown VIP" : "Golden Circle",
-        100 // dummy reward points internally but unused visually
-      );
-    }
-  }, [isSignedIn, user, email, isAdmin]);
 
   const clerkVipUser: UserType = {
     id: user.id,
@@ -163,11 +177,9 @@ function ClerkVIPCircle({ currentUser, onLogin, onLogout }: VIPCircleProps) {
     avatarUrl: user.imageUrl
   };
 
-  // Profile pic upload (stored in localStorage, overlays Clerk photo)
-  const [localAvatar, setLocalAvatar] = useState<string | null>(
-    () => localStorage.getItem("asteya_profile_pic")
-  );
-  const clerkFileInputRef = useRef<HTMLInputElement>(null);
+  // (localAvatar state + clerkFileInputRef were hoisted above the early-return
+  //  guards so the hook order stays stable across load states — see top of this
+  //  component.)
 
   const handleClerkAvatarUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
