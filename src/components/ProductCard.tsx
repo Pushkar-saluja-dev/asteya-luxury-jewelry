@@ -1,6 +1,7 @@
 import { Heart, Sparkles, Eye, ShieldCheck, Diamond } from "lucide-react";
 import { motion } from "motion/react";
 import { Product } from "../types";
+import { useMotionSafety } from "../lib/useMotionSafety";
 
 interface ProductCardProps {
   key?: string | number;
@@ -16,6 +17,7 @@ export default function ProductCard({
   onToggleWishlist,
   onSelect
 }: ProductCardProps) {
+  const safetyMode = useMotionSafety();
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat("en-IN", {
       style: "currency",
@@ -26,7 +28,7 @@ export default function ProductCard({
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 24 }}
+      initial={safetyMode ? false : { opacity: 0, y: 24 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: "-40px" }}
       transition={{ duration: 0.8, ease: [0.4, 0, 0.2, 1] }}
@@ -47,7 +49,7 @@ export default function ProductCard({
       <div className="absolute top-4 left-4 z-20 flex flex-col gap-2">
         {product.isNew && (
           <motion.div
-            initial={{ opacity: 0, x: -20 }}
+            initial={safetyMode ? false : { opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.2 }}
             className="flex items-center gap-1.5 bg-gold-gradient text-plum-950 text-[8px] font-bold tracking-[0.2em] uppercase px-3 py-1.5 rounded-sm shadow-gold-glow"
@@ -58,7 +60,7 @@ export default function ProductCard({
         )}
         {product.isLimited && (
           <motion.div
-            initial={{ opacity: 0, x: -20 }}
+            initial={safetyMode ? false : { opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.3 }}
             className="flex items-center gap-1.5 bg-purple-900/90 backdrop-blur-sm border border-gold-classic/30 text-gold-pale text-[8px] font-bold tracking-[0.2em] uppercase px-3 py-1.5 rounded-sm"
@@ -124,7 +126,7 @@ export default function ProductCard({
 
         {/* Quick View Button */}
         <motion.div
-          initial={{ opacity: 0 }}
+          initial={false}
           whileHover={{ opacity: 1 }}
           className="absolute inset-0 z-10 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-500 bg-plum-950/50 backdrop-blur-[4px]"
         >
@@ -166,7 +168,7 @@ export default function ProductCard({
         {/* Price Row */}
         <div className="mt-auto flex items-center justify-between pt-4 border-t border-gold-classic/5">
           <motion.span
-            initial={{ opacity: 0 }}
+            initial={safetyMode ? false : { opacity: 0 }}
             whileInView={{ opacity: 1 }}
             className="font-outfit font-semibold text-gold-classic text-sm sm:text-base tracking-[0.1em]"
           >

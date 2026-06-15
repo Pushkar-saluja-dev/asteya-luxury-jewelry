@@ -2,6 +2,7 @@ import React, { useState, useRef, ChangeEvent } from "react";
 import { Upload, Box, ShieldCheck, Sparkles, Plus, Trash2, Edit3, Save, X, RefreshCw, AlertCircle, ShoppingBag } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { Product } from "../types";
+import { useMotionSafety } from "../lib/useMotionSafety";
 
 interface AdminDashboardProps {
   products: Product[];
@@ -9,6 +10,7 @@ interface AdminDashboardProps {
 }
 
 export default function AdminDashboard({ products, onRefreshProducts }: AdminDashboardProps) {
+  const safetyMode = useMotionSafety();
   const [activeSubTab, setActiveSubTab] = useState<"list" | "create" | "edit">("list");
   
   // Active product editing state
@@ -610,7 +612,7 @@ export default function AdminDashboard({ products, onRefreshProducts }: AdminDas
       <AnimatePresence>
         {(statusMessage || errorMessage) && (
           <motion.div
-            initial={{ opacity: 0, y: -10 }}
+            initial={safetyMode ? false : { opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
             className={`p-4 rounded-sm mb-6 flex items-center gap-3 border ${
@@ -630,7 +632,7 @@ export default function AdminDashboard({ products, onRefreshProducts }: AdminDas
         {activeSubTab === "list" && (
           <motion.div
             key="listTab"
-            initial={{ opacity: 0 }}
+            initial={safetyMode ? false : { opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="glass-panel p-6 rounded-sm overflow-x-auto"
@@ -702,7 +704,7 @@ export default function AdminDashboard({ products, onRefreshProducts }: AdminDas
         {(activeSubTab === "create" || activeSubTab === "edit") && (
           <motion.form
             key="formTab"
-            initial={{ opacity: 0, y: 10 }}
+            initial={safetyMode ? false : { opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0 }}
             onSubmit={handleSubmitProduct}

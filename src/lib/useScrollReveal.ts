@@ -4,12 +4,20 @@ interface UseScrollRevealOptions {
   threshold?: number;
   rootMargin?: string;
   triggerOnce?: boolean;
+  /**
+   * Hard upper bound (ms) before we force-reveal even if
+   * IntersectionObserver never fires (Safari pull-to-refresh,
+   * iframe embedding, very old WebView). Must be > 0 to guarantee
+   * opacity never stays at 0.
+   */
+  fallbackDelayMs?: number;
 }
 
 export function useScrollReveal({
   threshold = 0.1,
   rootMargin = "-50px",
-  triggerOnce = true
+  triggerOnce = true,
+  fallbackDelayMs = 1500
 }: UseScrollRevealOptions = {}) {
   const ref = useRef<HTMLElement>(null);
   const [isRevealed, setIsRevealed] = useState(false);
@@ -18,10 +26,26 @@ export function useScrollReveal({
     const element = ref.current;
     if (!element) return;
 
+    const hasIO = typeof IntersectionObserver !== "undefined";
+
+    // iOS Safari can drop IntersectionObserver callbacks inside
+    // pull-to-refresh / overscroll regions, and some embedded
+    // WebViews ship without it entirely. We MUST eventually reveal
+    // — opacity must not stay at 0 forever.
+    const safetyTimer = window.setTimeout(() => {
+      setIsRevealed(true);
+    }, fallbackDelayMs);
+
+    if (!hasIO) {
+      setIsRevealed(true);
+      return () => window.clearTimeout(safetyTimer);
+    }
+
     const observer = new IntersectionObserver(
       ([entry]) => {
         if (entry.isIntersecting) {
           setIsRevealed(true);
+          window.clearTimeout(safetyTimer);
           if (triggerOnce) {
             observer.unobserve(element);
           }
@@ -36,8 +60,11 @@ export function useScrollReveal({
     );
 
     observer.observe(element);
-    return () => observer.disconnect();
-  }, [threshold, rootMargin, triggerOnce]);
+    return () => {
+      window.clearTimeout(safetyTimer);
+      observer.disconnect();
+    };
+  }, [threshold, rootMargin, triggerOnce, fallbackDelayMs]);
 
   return { ref, isRevealed };
 }

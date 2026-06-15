@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { Search, SlidersHorizontal, ArrowUpDown, ShieldCheck, Sparkles, AlertCircle, Diamond, Zap } from "lucide-react";
-import { motion, AnimatePresence, useScroll, useTransform } from "motion/react";
+import { motion, AnimatePresence } from "motion/react";
 
 import Header from "./components/Header";
 import Hero from "./components/Hero";
@@ -15,6 +15,7 @@ import AdminDashboard from "./components/AdminDashboard";
 import AIAestheticConcierge from "./components/AIAestheticConcierge";
 import ParticleSystem from "./components/ParticleSystem";
 import { checkIsAdmin } from "./lib/admin";
+import { useMotionSafety } from "./lib/useMotionSafety";
 
 import { Product, CartItem, User } from "./types";
 
@@ -66,6 +67,7 @@ function ScrollReveal({ children, delay = 0, className = "" }: { children: React
 }
 
 export default function App() {
+  const safetyMode = useMotionSafety();
   const [activeTab, setActiveTab] = useState<string>("catalog");
   const [products, setProducts] = useState<Product[]>([]);
   const [loadingProducts, setLoadingProducts] = useState(true);
@@ -331,7 +333,7 @@ export default function App() {
           {activeTab === "catalog" && (
             <motion.div
               key="catalogTab"
-              initial={{ opacity: 0 }}
+              initial={safetyMode ? false : { opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.5 }}
@@ -346,7 +348,7 @@ export default function App() {
                   <div className="flex flex-col lg:flex-row justify-between items-start lg:items-end mb-12 gap-6 border-b border-gold-classic/10 pb-8">
                     <div>
                       <motion.div
-                        initial={{ opacity: 0, x: -20 }}
+                        initial={safetyMode ? false : { opacity: 0, x: -20 }}
                         whileInView={{ opacity: 1, x: 0 }}
                         viewport={{ once: true }}
                         transition={{ duration: 0.6 }}
@@ -361,7 +363,7 @@ export default function App() {
                     </div>
 
                     <motion.div
-                      initial={{ opacity: 0, x: 20 }}
+                      initial={safetyMode ? false : { opacity: 0, x: 20 }}
                       whileInView={{ opacity: 1, x: 0 }}
                       viewport={{ once: true }}
                       transition={{ duration: 0.6, delay: 0.2 }}
@@ -451,7 +453,7 @@ export default function App() {
                   <ScrollReveal>
                     <div className="py-24 text-center space-y-4">
                       <motion.div
-                        initial={{ scale: 0 }}
+                        initial={safetyMode ? false : { scale: 0 }}
                         animate={{ scale: 1 }}
                         transition={{ type: "spring", stiffness: 200, damping: 15 }}
                       >
@@ -493,7 +495,7 @@ export default function App() {
 
                   <div className="relative z-10 max-w-7xl mx-auto px-6 text-center">
                     <motion.div
-                      initial={{ opacity: 0, y: 30 }}
+                      initial={safetyMode ? false : { opacity: 0, y: 30 }}
                       whileInView={{ opacity: 1, y: 0 }}
                       viewport={{ once: true }}
                       transition={{ duration: 0.8 }}
@@ -533,7 +535,7 @@ export default function App() {
           {activeTab === "tryon" && (
             <motion.div
               key="tryonTab"
-              initial={{ opacity: 0 }}
+              initial={safetyMode ? false : { opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
             >
@@ -552,7 +554,7 @@ export default function App() {
           {activeTab === "concierge" && (
             <motion.div
               key="conciergeTab"
-              initial={{ opacity: 0 }}
+              initial={safetyMode ? false : { opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
             >
@@ -568,7 +570,7 @@ export default function App() {
           {activeTab === "stacker" && (
             <motion.div
               key="stackerTab"
-              initial={{ opacity: 0 }}
+              initial={safetyMode ? false : { opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
             >
@@ -584,7 +586,7 @@ export default function App() {
           {activeTab === "vip" && (
             <motion.div
               key="vipTab"
-              initial={{ opacity: 0 }}
+              initial={safetyMode ? false : { opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
             >
@@ -599,7 +601,7 @@ export default function App() {
           {activeTab === "admin" && (
             <motion.div
               key="adminTab"
-              initial={{ opacity: 0 }}
+              initial={safetyMode ? false : { opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
             >

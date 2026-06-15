@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect, ChangeEvent } from "react";
 import { Camera, RefreshCw, Upload, Sparkles, ShieldCheck, Heart, AlertCircle, Eye, EyeOff, Info, SlidersHorizontal } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { Product, TryOnResponse, User } from "../types";
+import { useMotionSafety } from "../lib/useMotionSafety";
 
 interface AITryOnStudioProps {
   products: Product[];
@@ -141,6 +142,7 @@ export default function AITryOnStudio({
   isWishlisted,
   currentUser
 }: AITryOnStudioProps) {
+  const safetyMode = useMotionSafety();
   const tryOnProducts = products.filter(p => p.tryOnImageUrl);
   const activeProduct = (selectedProduct && selectedProduct.tryOnImageUrl)
     ? (products.find(p => p.id === selectedProduct.id) || selectedProduct)
@@ -1091,14 +1093,14 @@ export default function AITryOnStudio({
               <AnimatePresence>
                 {(analyzingState === "capturing" || analyzingState === "landmarks") && (
                   <motion.div
-                    initial={{ opacity: 0 }}
+                    initial={safetyMode ? false : { opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
                     className="absolute inset-0 z-30 bg-plum-950/40 backdrop-blur-[2px] flex flex-col items-center justify-center p-6 text-center select-none pointer-events-none"
                   >
                     {/* Golden laser horizontal bar moving up and down continuously */}
                     <motion.div
-                      initial={{ top: "0%" }}
+                      initial={safetyMode ? false : { top: "0%" }}
                       animate={{ top: "100%" }}
                       transition={{ repeat: Infinity, duration: 2.2, ease: "linear" }}
                       className="absolute left-0 right-0 h-[3px] bg-gold-gradient shadow-[0_0_15px_#c5a059] z-20 pointer-events-none"
@@ -1395,7 +1397,7 @@ export default function AITryOnStudio({
               {analyzingState === "idle" && (
                 <motion.div
                   key="idleReport"
-                  initial={{ opacity: 0, y: 15 }}
+                  initial={safetyMode ? false : { opacity: 0, y: 15 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -15 }}
                   className="glass-panel p-6 rounded-sm text-center py-16 flex flex-col items-center justify-center space-y-5"
@@ -1419,7 +1421,7 @@ export default function AITryOnStudio({
               {(analyzingState === "capturing" || analyzingState === "landmarks" || analyzingState === "gemologist") && (
                 <motion.div
                   key="loadingReport"
-                  initial={{ opacity: 0, y: 15 }}
+                  initial={safetyMode ? false : { opacity: 0, y: 15 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -15 }}
                   className="glass-panel p-6 rounded-sm text-center py-20 flex flex-col items-center justify-center space-y-6 bg-gold-classic/[0.02] border-gold-classic/10"
@@ -1440,7 +1442,7 @@ export default function AITryOnStudio({
               {analyzingState === "complete" && aiReport && (
                 <motion.div
                   key="reportComplete"
-                  initial={{ opacity: 0, scale: 0.95 }}
+                  initial={safetyMode ? false : { opacity: 0, scale: 0.95 }}
                   animate={{ opacity: 1, scale: 1 }}
                   className="space-y-6"
                 >

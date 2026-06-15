@@ -2,6 +2,7 @@ import { ShoppingBag, X, Trash2, ArrowRight, Clock, ShieldCheck } from "lucide-r
 import { motion, AnimatePresence } from "motion/react";
 import { useState, useEffect } from "react";
 import { CartItem, User } from "../types";
+import { useMotionSafety } from "../lib/useMotionSafety";
 
 interface CartDrawerProps {
   isOpen: boolean;
@@ -22,6 +23,8 @@ export default function CartDrawer({
   onClearCart,
   currentUser
 }: CartDrawerProps) {
+  const safetyMode = useMotionSafety();
+
   const [checkingOut, setCheckingOut] = useState(false);
   const [checkoutStep, setCheckoutStep] = useState(0);
   const [showForm, setShowForm] = useState(false);
@@ -131,7 +134,7 @@ export default function CartDrawer({
         <div className="fixed inset-0 z-50 overflow-hidden">
           {/* Backdrop overlay */}
           <motion.div
-            initial={{ opacity: 0 }}
+            initial={safetyMode ? false : { opacity: 0 }}
             animate={{ opacity: 0.7 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
@@ -141,7 +144,7 @@ export default function CartDrawer({
           {/* Drawer Pane */}
           <div className="absolute inset-y-0 right-0 max-w-full flex pl-10">
             <motion.div
-              initial={{ x: "100%" }}
+              initial={safetyMode ? false : { x: "100%" }}
               animate={{ x: 0 }}
               exit={{ x: "100%" }}
               transition={{ type: "spring", damping: 30, stiffness: 220 }}
@@ -177,7 +180,7 @@ export default function CartDrawer({
                       {checkoutStep === 1 && (
                         <motion.div
                           key="step1"
-                          initial={{ opacity: 0, y: 10 }}
+                          initial={safetyMode ? false : { opacity: 0, y: 10 }}
                           animate={{ opacity: 1, y: 0 }}
                           exit={{ opacity: 0, y: -10 }}
                           className="space-y-3"
@@ -194,7 +197,7 @@ export default function CartDrawer({
                       {checkoutStep === 2 && (
                         <motion.div
                           key="step2"
-                          initial={{ opacity: 0, y: 10 }}
+                          initial={safetyMode ? false : { opacity: 0, y: 10 }}
                           animate={{ opacity: 1, y: 0 }}
                           exit={{ opacity: 0, y: -10 }}
                           className="space-y-3"
@@ -211,7 +214,7 @@ export default function CartDrawer({
                       {checkoutStep === 3 && (
                         <motion.div
                           key="step3"
-                          initial={{ opacity: 0, y: 10 }}
+                          initial={safetyMode ? false : { opacity: 0, y: 10 }}
                           animate={{ opacity: 1, y: 0 }}
                           exit={{ opacity: 0, y: -10 }}
                           className="space-y-3"
@@ -228,7 +231,7 @@ export default function CartDrawer({
                       {checkoutStep === 4 && (
                         <motion.div
                           key="step4"
-                          initial={{ opacity: 0, y: 10 }}
+                          initial={safetyMode ? false : { opacity: 0, y: 10 }}
                           animate={{ opacity: 1, y: 0 }}
                           exit={{ opacity: 0, y: -10 }}
                           className="space-y-3"
@@ -245,7 +248,7 @@ export default function CartDrawer({
                       {checkoutStep === 5 && (
                         <motion.div
                           key="step5"
-                          initial={{ opacity: 0, scale: 0.95 }}
+                          initial={safetyMode ? false : { opacity: 0, scale: 0.95 }}
                           animate={{ opacity: 1, scale: 1 }}
                           className="space-y-6"
                         >
@@ -374,7 +377,7 @@ export default function CartDrawer({
                     {cartItems.map((item, index) => (
                       <motion.div
                         key={`${item.product.id}-${item.selectedSize || index}`}
-                        initial={{ opacity: 0, y: 15 }}
+                        initial={safetyMode ? false : { opacity: 0, y: 15 }}
                         animate={{ opacity: 1, y: 0 }}
                         className="flex gap-4.5 p-4 border border-gold-classic/5 bg-plum-950/20 rounded-sm relative group"
                       >

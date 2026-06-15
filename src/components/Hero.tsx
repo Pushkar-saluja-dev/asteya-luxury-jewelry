@@ -1,6 +1,7 @@
 import { ArrowDown, Sparkles, Award, Diamond } from "lucide-react";
 import { motion, useScroll, useTransform, useSpring } from "motion/react";
 import { useEffect, useRef, useState } from "react";
+import { useMotionSafety } from "../lib/useMotionSafety";
 
 interface HeroProps {
   onExplore: () => void;
@@ -8,41 +9,45 @@ interface HeroProps {
 
 export default function Hero({ onExplore }: HeroProps) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const safetyMode = useMotionSafety();
   const { scrollY } = useScroll();
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
   const [isMobile, setIsMobile] = useState(false);
+  const [viewport, setViewport] = useState<{ width: number; height: number }>({
+    width: typeof window === "undefined" ? 1024 : window.innerWidth,
+    height: typeof window === "undefined" ? 768 : window.innerHeight,
+  });
 
   useEffect(() => {
     const checkMobile = () => {
       setIsMobile(
-        window.innerWidth < 768 || 
+        window.innerWidth < 768 ||
         /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
       );
+      setViewport({ width: window.innerWidth, height: window.innerHeight });
     };
     checkMobile();
     window.addEventListener("resize", checkMobile);
     return () => window.removeEventListener("resize", checkMobile);
   }, []);
 
-  // Parallax transforms based on scroll (disabled on mobile to prevent layout issues)
-  const y1 = useTransform(scrollY, (value) => isMobile ? 0 : value * 0.4);
-  const y2 = useTransform(scrollY, (value) => isMobile ? 0 : value * 0.3);
-  const y3 = useTransform(scrollY, (value) => isMobile ? 0 : value * 0.2);
+  // Parallax transforms based on scroll — disabled on mobile or
+  // touch-Safari safety mode (where useTransform drops mid-scroll).
+  const y1 = safetyMode || isMobile ? 0 : useTransform(scrollY, (value) => value * 0.4);
+  const y2 = safetyMode || isMobile ? 0 : useTransform(scrollY, (value) => value * 0.3);
+  const y3 = safetyMode || isMobile ? 0 : useTransform(scrollY, (value) => value * 0.2);
 
-  const opacityHero = useTransform(scrollY, (value) => {
-    if (isMobile) return 1;
-    return Math.max(0, 1 - value / 400);
-  });
+  const opacityHero = safetyMode || isMobile
+    ? 1
+    : useTransform(scrollY, (value) => Math.max(0, 1 - value / 400));
 
-  const opacityBg = useTransform(scrollY, (value) => {
-    if (isMobile) return 0.15;
-    return Math.max(0, 0.15 * (1 - value / 400));
-  });
+  const opacityBg = safetyMode || isMobile
+    ? 0.15
+    : useTransform(scrollY, (value) => Math.max(0, 0.15 * (1 - value / 400)));
 
-  const scaleHero = useTransform(scrollY, (value) => {
-    if (isMobile) return 1;
-    return Math.max(0.95, 1 - (value / 400) * 0.05);
-  });
+  const scaleHero = safetyMode || isMobile
+    ? 1
+    : useTransform(scrollY, (value) => Math.max(0.95, 1 - (value / 400) * 0.05));
 
   // Smooth mouse follow for spotlight effect
   const mouseX = useSpring(mousePosition.x, { stiffness: 100, damping: 30 });
@@ -72,7 +77,7 @@ export default function Hero({ onExplore }: HeroProps) {
   return (
     <div
       ref={containerRef}
-      className="relative min-h-[100dvh] bg-plum-950 overflow-hidden flex flex-col justify-center items-center px-6 pt-48 sm:pt-52 md:pt-64 lg:pt-72 luxury-texture bg-radial-luxury"
+      className="relative min-h-[100dvh] bg-plum-950 overflow-hidden flex flex-col justify-start items-center px-6 pt-44 sm:pt-48 md:pt-56 lg:pt-60 luxury-texture bg-radial-luxury"
     >
       {/* Animated background radial glows */}
       <div className="absolute inset-0 z-0 overflow-hidden">
@@ -134,7 +139,7 @@ export default function Hero({ onExplore }: HeroProps) {
         style={{
           x: mouseX,
           y: mouseY,
-          background: `radial-gradient(400px circle at ${mousePosition.x + window.innerWidth/2}px ${mousePosition.y + window.innerHeight/2}px, rgba(197, 160, 89, 0.03), transparent 60%)`
+          background: `radial-gradient(400px circle at ${mousePosition.x + viewport.width / 2}px ${mousePosition.y + viewport.height / 2}px, rgba(197, 160, 89, 0.03), transparent 60%)`
         }}
         className="absolute inset-0 z-0 pointer-events-none"
       />
@@ -146,7 +151,7 @@ export default function Hero({ onExplore }: HeroProps) {
       >
         {/* Couture Tagline with animated lines */}
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={safetyMode || isMobile ? false : { opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 1.2, ease: "easeOut" }}
           className="flex items-center gap-3 mb-8"
@@ -182,7 +187,7 @@ export default function Hero({ onExplore }: HeroProps) {
 
         {/* Brand Headline - Dual Core Pairing */}
         <motion.h1
-          initial={{ opacity: 0, y: 40 }}
+          initial={safetyMode || isMobile ? false : { opacity: 0, y: 40 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 1.6, delay: 0.3, ease: "easeOut" }}
           style={{ textShadow: '0 4px 16px rgba(0,0,0,0.85)' }}
@@ -196,7 +201,7 @@ export default function Hero({ onExplore }: HeroProps) {
 
         {/* Narrative editorial statement with shimmer */}
         <motion.p
-          initial={{ opacity: 0, y: 30 }}
+          initial={safetyMode || isMobile ? false : { opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 1.6, delay: 0.6, ease: "easeOut" }}
           className="font-cormorant text-xl sm:text-3xl font-medium text-gold-pale/90 italic max-w-2xl px-4 leading-relaxed tracking-wide mb-16 drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)]"
@@ -209,7 +214,7 @@ export default function Hero({ onExplore }: HeroProps) {
 
         {/* Action Buttons with enhanced styling */}
         <motion.div
-          initial={{ opacity: 0, scale: 0.9 }}
+          initial={safetyMode || isMobile ? false : { opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 1, delay: 0.9 }}
           className="flex flex-col sm:flex-row gap-6 items-center justify-center w-full max-w-lg px-4"
@@ -231,7 +236,7 @@ export default function Hero({ onExplore }: HeroProps) {
 
           {/* Luxury Brand Badge */}
           <motion.div
-            initial={{ opacity: 0, x: 20 }}
+            initial={safetyMode || isMobile ? false : { opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 1.2 }}
             className="flex items-center gap-3 text-gold-pale/80 text-[10px] font-outfit tracking-widest uppercase"
@@ -248,7 +253,7 @@ export default function Hero({ onExplore }: HeroProps) {
 
         {/* Decorative divider */}
         <motion.div
-          initial={{ opacity: 0, scaleX: 0 }}
+          initial={safetyMode || isMobile ? false : { opacity: 0, scaleX: 0 }}
           animate={{ opacity: 1, scaleX: 1 }}
           transition={{ delay: 1.5, duration: 1 }}
           className="w-px h-24 bg-gradient-to-b from-gold-classic/50 via-gold-classic/20 to-transparent mt-12"
@@ -257,7 +262,7 @@ export default function Hero({ onExplore }: HeroProps) {
 
       {/* Parallax scroll indicator */}
       <motion.div
-        initial={{ opacity: 0 }}
+        initial={safetyMode || isMobile ? false : { opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 1.8, duration: 1 }}
         onClick={onExplore}

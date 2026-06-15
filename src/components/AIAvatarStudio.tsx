@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { Product } from "../types";
+import { useMotionSafety } from "../lib/useMotionSafety";
 
 interface AIAvatarStudioProps {
   onRegisterAvatar: (avatarUrl: string, name: string) => void;
@@ -590,6 +591,7 @@ function StepHeader({ icon: Icon, title, subtitle }: { icon: any; title: string;
 
 /* ===== MAIN COMPONENT ===== */
 export default function AIAvatarStudio({ onRegisterAvatar, currentUser }: AIAvatarStudioProps) {
+  const safetyMode = useMotionSafety();
   const [userName, setUserName] = useState(currentUser?.name || "Curator");
   const [activeStep, setActiveStep] = useState(0);
   const [savingState, setSavingState] = useState(false);
@@ -652,18 +654,18 @@ export default function AIAvatarStudio({ onRegisterAvatar, currentUser }: AIAvat
 
         {/* Header */}
         <div className="text-center mb-12">
-          <motion.span initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}
+          <motion.span initial={safetyMode ? false : { opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}
             className="inline-block text-[9px] tracking-[0.5em] text-amber-400 uppercase font-bold mb-3 px-4 py-1.5 border border-amber-400/20 rounded-full bg-amber-400/5">
             Digital Identity Studio
           </motion.span>
-          <motion.h1 initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
+          <motion.h1 initial={safetyMode ? false : { opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
             className="font-cinzel text-4xl sm:text-6xl tracking-widest text-white uppercase font-bold mb-4">
             Avatar{" "}
             <span style={{ background: "linear-gradient(135deg, #d4af37, #f5e06e, #b8860b)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
               Atelier
             </span>
           </motion.h1>
-          <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2 }}
+          <motion.p initial={safetyMode ? false : { opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2 }}
             className="font-cormorant text-gray-300 italic text-lg max-w-xl mx-auto">
             Craft your luxury digital identity and preview premium jewelry collections directly on your avatar
           </motion.p>
@@ -674,7 +676,7 @@ export default function AIAvatarStudio({ onRegisterAvatar, currentUser }: AIAvat
 
           {/* LEFT: Avatar Preview */}
           <div className="xl:col-span-4 space-y-4">
-            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.15 }}
+            <motion.div initial={safetyMode ? false : { opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.15 }}
               className="relative rounded-2xl overflow-hidden border border-white/8 shadow-2xl"
               style={{
                 background: lighting.bg,
@@ -772,7 +774,7 @@ export default function AIAvatarStudio({ onRegisterAvatar, currentUser }: AIAvat
 
             {/* Save button */}
             <motion.button
-              initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}
+              initial={safetyMode ? false : { opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}
               disabled={savingState}
               onClick={handleSave}
               className="w-full py-4 rounded-xl font-outfit text-sm tracking-widest font-bold uppercase flex items-center justify-center gap-3 transition-all duration-300 cursor-pointer relative overflow-hidden"
@@ -803,7 +805,7 @@ export default function AIAvatarStudio({ onRegisterAvatar, currentUser }: AIAvat
           <div className="xl:col-span-8 space-y-4">
 
             {/* Step tabs */}
-            <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}
+            <motion.div initial={safetyMode ? false : { opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}
               className="flex gap-1 p-1.5 rounded-xl overflow-x-auto"
               style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)" }}>
               {STEPS.map((step, idx) => {
@@ -826,7 +828,7 @@ export default function AIAvatarStudio({ onRegisterAvatar, currentUser }: AIAvat
             {/* Step Content */}
             <AnimatePresence mode="wait">
               <motion.div key={currentStep.id}
-                initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}
+                initial={safetyMode ? false : { opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}
                 transition={{ duration: 0.2 }}
                 className="rounded-2xl p-6 sm:p-8"
                 style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)" }}>

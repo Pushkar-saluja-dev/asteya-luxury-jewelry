@@ -4,6 +4,7 @@ import { motion } from "motion/react";
 import { SignIn, SignUp, useUser, SignOutButton } from "@clerk/clerk-react";
 import { User as UserType } from "../types";
 import { checkIsAdmin } from "../lib/admin";
+import { useMotionSafety } from "../lib/useMotionSafety";
 
 interface VIPCircleProps {
   currentUser: UserType | null;
@@ -14,6 +15,7 @@ interface VIPCircleProps {
 const HAS_CLERK = !!(import.meta.env?.VITE_CLERK_PUBLISHABLE_KEY as string);
 
 export default function VIPCircle(props: VIPCircleProps) {
+  const safetyMode = useMotionSafety();
   return (
     <div className="max-w-7xl mx-auto px-6 pt-32 pb-24 min-h-screen">
       <div className="text-center max-w-2xl mx-auto mb-16">
@@ -39,6 +41,7 @@ export default function VIPCircle(props: VIPCircleProps) {
 
 /* ================= CLERK AUTH WIDGET WRAPPER ================= */
 function ClerkVIPCircle({ currentUser, onLogin, onLogout }: VIPCircleProps) {
+  const safetyMode = useMotionSafety();
   const { user, isLoaded, isSignedIn } = useUser();
   const [authMode, setAuthMode] = useState<"signin" | "signup">("signin");
 
@@ -182,7 +185,7 @@ function ClerkVIPCircle({ currentUser, onLogin, onLogout }: VIPCircleProps) {
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 15 }}
+      initial={safetyMode ? false : { opacity: 0, y: 15 }}
       animate={{ opacity: 1, y: 0 }}
       className="grid grid-cols-1 lg:grid-cols-12 gap-8"
     >
@@ -368,6 +371,7 @@ function ClerkVIPCircle({ currentUser, onLogin, onLogout }: VIPCircleProps) {
 
 /* ================= OFFLINE FALLBACK WIDGET ================= */
 function OfflineVIPCircle({ currentUser, onLogin, onLogout }: VIPCircleProps) {
+  const safetyMode = useMotionSafety();
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -422,7 +426,7 @@ function OfflineVIPCircle({ currentUser, onLogin, onLogout }: VIPCircleProps) {
     <>
       {!currentUser ? (
         <motion.div
-          initial={{ opacity: 0, scale: 0.98 }}
+          initial={safetyMode ? false : { opacity: 0, scale: 0.98 }}
           animate={{ opacity: 1, scale: 1 }}
           className="max-w-md mx-auto glass-panel p-6 sm:p-8 rounded-sm bg-[#120313]/50 border-gold-classic/15 relative overflow-hidden"
         >
@@ -477,7 +481,7 @@ function OfflineVIPCircle({ currentUser, onLogin, onLogout }: VIPCircleProps) {
         </motion.div>
       ) : (
         <motion.div
-          initial={{ opacity: 0, y: 15 }}
+          initial={safetyMode ? false : { opacity: 0, y: 15 }}
           animate={{ opacity: 1, y: 0 }}
           className="grid grid-cols-1 lg:grid-cols-12 gap-8"
         >

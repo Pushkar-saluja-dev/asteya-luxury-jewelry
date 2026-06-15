@@ -2,6 +2,7 @@ import React, { useState, useRef, ChangeEvent } from "react";
 import { Sparkles, Upload, Camera, Paintbrush, Coins, RefreshCw, ShoppingBag, Eye, Check, AlertCircle } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { Product, User } from "../types";
+import { useMotionSafety } from "../lib/useMotionSafety";
 
 interface AIAestheticConciergeProps {
   products: Product[];
@@ -54,6 +55,7 @@ export default function AIAestheticConcierge({
   onViewProduct,
   currentUser
 }: AIAestheticConciergeProps) {
+  const safetyMode = useMotionSafety();
   // Input parameters state
   const [budget, setBudget] = useState<string>("10000"); // default budget: ₹10,000 INR
   const [matchBudget, setMatchBudget] = useState<boolean>(true);
@@ -454,7 +456,7 @@ export default function AIAestheticConcierge({
           /* LOADING PROGRESS BOARD SCREEN */
           <motion.div
             key="matchingLoader"
-            initial={{ opacity: 0, scale: 0.98 }}
+            initial={safetyMode ? false : { opacity: 0, scale: 0.98 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0 }}
             className="glass-panel p-12 max-w-xl mx-auto text-center space-y-8 py-20 border border-gold-classic/20 rounded-sm"
@@ -479,7 +481,7 @@ export default function AIAestheticConcierge({
             <div className="w-full bg-plum-900/60 h-[1.5px] rounded-full overflow-hidden relative">
               <motion.div
                 className="h-full bg-gold-gradient"
-                initial={{ width: "0%" }}
+                initial={safetyMode ? false : { width: "0%" }}
                 animate={{
                   width: 
                     matchingState === "outfit_scan" ? "33%" : 
@@ -495,7 +497,7 @@ export default function AIAestheticConcierge({
           /* COGNITIVE AESTHETICS RESULTS BOARD */
           <motion.div
             key="conciergeResults"
-            initial={{ opacity: 0, y: 24 }}
+            initial={safetyMode ? false : { opacity: 0, y: 24 }}
             animate={{ opacity: 1, y: 0 }}
             className="space-y-12"
           >
@@ -688,7 +690,7 @@ export default function AIAestheticConcierge({
           /* SETUP INPUT FORM SCREEN */
           <motion.div
             key="conciergeForm"
-            initial={{ opacity: 0 }}
+            initial={safetyMode ? false : { opacity: 0 }}
             animate={{ opacity: 1 }}
             className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start"
           >
@@ -825,9 +827,9 @@ export default function AIAestheticConcierge({
                   {outfitSource === "template" ? (
                     
                     /* Option A: Preset Outfit Templates picker */
-                    <motion.div 
+                    <motion.div
                       key="outfitTemplates"
-                      initial={{ opacity: 0 }}
+                      initial={safetyMode ? false : { opacity: 0 }}
                       animate={{ opacity: 1 }}
                       className="space-y-3"
                     >
@@ -863,7 +865,7 @@ export default function AIAestheticConcierge({
                     /* Option B: Local file Upload area */
                     <motion.div
                       key="outfitUpload"
-                      initial={{ opacity: 0 }}
+                      initial={safetyMode ? false : { opacity: 0 }}
                       animate={{ opacity: 1 }}
                       className="space-y-4"
                     >
@@ -957,9 +959,9 @@ export default function AIAestheticConcierge({
                     {skinSource === "camera" && streamActive ? (
                       
                       /* Cam Feed active view */
-                      <motion.div 
+                      <motion.div
                         key="camViewport"
-                        initial={{ opacity: 0 }}
+                        initial={safetyMode ? false : { opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
                         className="w-full h-full relative"
@@ -984,7 +986,7 @@ export default function AIAestheticConcierge({
                       /* Static Image Display View */
                       <motion.div
                         key="staticViewport"
-                        initial={{ opacity: 0 }}
+                        initial={safetyMode ? false : { opacity: 0 }}
                         animate={{ opacity: 1 }}
                         className="w-full h-full relative"
                       >

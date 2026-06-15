@@ -1,6 +1,7 @@
 import { Heart, X, ShoppingBag, Eye, HeartOff } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { Product } from "../types";
+import { useMotionSafety } from "../lib/useMotionSafety";
 
 interface WishlistDrawerProps {
   isOpen: boolean;
@@ -19,6 +20,8 @@ export default function WishlistDrawer({
   onViewProduct,
   onAddToCart
 }: WishlistDrawerProps) {
+  const safetyMode = useMotionSafety();
+
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat("en-IN", {
       style: "currency",
@@ -33,7 +36,7 @@ export default function WishlistDrawer({
         <div className="fixed inset-0 z-50 overflow-hidden">
           {/* Backdrop */}
           <motion.div
-            initial={{ opacity: 0 }}
+            initial={safetyMode ? false : { opacity: 0 }}
             animate={{ opacity: 0.7 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
@@ -43,7 +46,7 @@ export default function WishlistDrawer({
           {/* Drawer Pane */}
           <div className="absolute inset-y-0 right-0 max-w-full flex pl-10">
             <motion.div
-              initial={{ x: "100%" }}
+              initial={safetyMode ? false : { x: "100%" }}
               animate={{ x: 0 }}
               exit={{ x: "100%" }}
               transition={{ type: "spring", damping: 30, stiffness: 220 }}
@@ -83,7 +86,7 @@ export default function WishlistDrawer({
                       <motion.div
                         key={product.id}
                         layout
-                        initial={{ opacity: 0, scale: 0.95 }}
+                        initial={safetyMode ? false : { opacity: 0, scale: 0.95 }}
                         animate={{ opacity: 1, scale: 1 }}
                         exit={{ opacity: 0, scale: 0.95 }}
                         className="flex gap-4 p-3 border border-gold-classic/5 bg-plum-950/20 rounded-sm relative group"

@@ -103,37 +103,58 @@
   75% { transform: translate(-10%, -5%) scale(1.02); }
 }
 
-/* ============ GLASSMORPHISM EFFECTS ============ */
+/* ============ GLASSMORPHISM EFFECTS ============
+ * iOS Safari caveat: < Safari 18 shows visibility/repaint issues when
+ * `backdrop-filter` composites atop a fully transparent layer. We declare
+ * a heavily tinted opaque background first (works in every browser),
+ * then layer `backdrop-filter` only inside `@supports` so engines that
+ * cannot honour it degrade gracefully to the solid fallback.
+ */
 .glass-panel {
   background: rgba(26, 10, 22, 0.75);
-  backdrop-filter: blur(20px) saturate(180%);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
   border: 1px solid rgba(197, 160, 89, 0.2);
   box-shadow:
     0 8px 32px rgba(0, 0, 0, 0.4),
     inset 0 1px 0 rgba(255, 255, 255, 0.1);
 }
+@supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .glass-panel {
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    background: rgba(26, 10, 22, 0.55);
+  }
+}
 
 .glass-panel-heavy {
   background: rgba(45, 11, 35, 0.95);
-  backdrop-filter: blur(24px) saturate(200%);
-  -webkit-backdrop-filter: blur(24px) saturate(200%);
   border: 1px solid rgba(197, 160, 89, 0.3);
   box-shadow:
     0 8px 48px rgba(0, 0, 0, 0.5),
     inset 0 1px 0 rgba(255, 255, 255, 0.1);
 }
+@supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .glass-panel-heavy {
+    backdrop-filter: blur(24px) saturate(200%);
+    -webkit-backdrop-filter: blur(24px) saturate(200%);
+    background: rgba(45, 11, 35, 0.65);
+  }
+}
 
 .glass-panel-luxe {
   background: linear-gradient(135deg, rgba(26, 10, 22, 0.85) 0%, rgba(45, 11, 35, 0.8) 100%);
-  backdrop-filter: blur(24px) saturate(220%);
-  -webkit-backdrop-filter: blur(24px) saturate(220%);
   border: 1px solid rgba(197, 160, 89, 0.25);
   box-shadow:
     0 4px 24px rgba(0, 0, 0, 0.3),
     inset 0 1px 0 rgba(255, 255, 255, 0.1),
     0 0 40px rgba(197, 160, 89, 0.1);
   transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+@supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .glass-panel-luxe {
+    backdrop-filter: blur(24px) saturate(220%);
+    -webkit-backdrop-filter: blur(24px) saturate(220%);
+    background: linear-gradient(135deg, rgba(26, 10, 22, 0.6) 0%, rgba(45, 11, 35, 0.55) 100%);
+  }
 }
 
 .glass-panel-luxe:hover {
@@ -147,13 +168,18 @@
 
 .glass-card {
   background: rgba(45, 11, 35, 0.5);
-  backdrop-filter: blur(16px) saturate(180%);
-  -webkit-backdrop-filter: blur(16px) saturate(180%);
   border: 1px solid rgba(197, 160, 89, 0.15);
   border-radius: 2px;
   transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
   overflow: hidden;
+}
+@supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .glass-card {
+    backdrop-filter: blur(16px) saturate(180%);
+    -webkit-backdrop-filter: blur(16px) saturate(180%);
+    background: rgba(45, 11, 35, 0.4);
+  }
 }
 
 .glass-card::before {
@@ -283,6 +309,20 @@
 .scroll-reveal.revealed {
   opacity: 1;
   transform: translateY(0);
+}
+
+/* iOS Safari sometimes drop `<motion.*>` IntersectionObserver updates
+   inside iframes/Bottom-Sheets. The 8s "forced reveal" guarantees the
+   element ends visible (opacity:1, no translate) even if JS never runs. */
+@media (prefers-reduced-motion: reduce), (hover: none) and (pointer: coarse) {
+  .scroll-reveal,
+  .scroll-reveal-scale,
+  .scroll-reveal-left,
+  .scroll-reveal-right {
+    opacity: 1 !important;
+    transform: none !important;
+    transition: none !important;
+  }
 }
 
 .scroll-reveal-scale {
@@ -428,17 +468,40 @@
   box-shadow: 0 0 30px rgba(197, 160, 89, 0.2);
 }
 
-/* ============ DECORATIVE BLOBS ============ */
+/* ============ DECORATIVE BLOBS ============
+ * iOS Safari can turn `filter: blur()` on a circular `radial-gradient`
+ * into a flat color smear (especially on lower-tier iPhones while the
+ * GPU is under heavy parallax load). We default to a full opacity
+ * radial gradient with a soft outer edge (no blur), then enable the
+ * Gaussian blur only when the engine reports broad support.
+ */
 .blob-glow {
-  background: radial-gradient(circle, rgba(197, 160, 89, 0.3) 0%, transparent 70%);
-  filter: blur(60px);
+  background: radial-gradient(
+    circle,
+    rgba(197, 160, 89, 0.3) 0%,
+    rgba(197, 160, 89, 0.12) 40%,
+    transparent 70%
+  );
   animation: blob-float 8s ease-in-out infinite;
 }
-
 .blob-glow-sm {
-  background: radial-gradient(circle, rgba(226, 201, 146, 0.2) 0%, transparent 70%);
-  filter: blur(40px);
+  background: radial-gradient(
+    circle,
+    rgba(226, 201, 146, 0.2) 0%,
+    rgba(226, 201, 146, 0.08) 40%,
+    transparent 70%
+  );
   animation: blob-float 6s ease-in-out infinite reverse;
+}
+@supports (filter: blur(40px)) and (not (-webkit-touch-callout: none)) {
+  .blob-glow {
+    background: radial-gradient(circle, rgba(197, 160, 89, 0.3) 0%, transparent 70%);
+    filter: blur(60px);
+  }
+  .blob-glow-sm {
+    background: radial-gradient(circle, rgba(226, 201, 146, 0.2) 0%, transparent 70%);
+    filter: blur(40px);
+  }
 }
 
 /* ============ CUSTOM SCROLLBAR ============ */
@@ -525,4 +588,40 @@ html {
 
 .preserve-3d {
   transform-style: preserve-3d;
+}
+
+/* ============ iOS SAFE-AREA UTILITIES ============
+ * `pt-safe-top` / `pb-safe-bottom` / `px-safe-x` add the iPhone notch
+ * and home-indicator insets as padding so fixed headers / footers do
+ * not get clipped. They collapse to 0 on devices that lack
+ * `env(safe-area-inset-*)`.
+ */
+.pt-safe-top    { padding-top:    max(env(safe-area-inset-top),    0px); }
+.pb-safe-bottom { padding-bottom: max(env(safe-area-inset-bottom), 0px); }
+.pl-safe-x      { padding-left:   max(env(safe-area-inset-left),   0px); }
+.pr-safe-x      { padding-right:  max(env(safe-area-inset-right),  0px); }
+.inset-safe-top    { top:    env(safe-area-inset-top,    0px); }
+.inset-safe-bottom { bottom: env(safe-area-inset-bottom, 0px); }
+.mt-safe-top    { margin-top:    env(safe-area-inset-top,    0px); }
+.mb-safe-bottom { margin-bottom: env(safe-area-inset-bottom, 0px); }
+
+/* ============ DYNAMIC VIEWPORT HEIGHT UTILITIES ============
+ * iOS Safari's `vh` unit historically included the URL bar; `dvh`
+ * uses the visible viewport. `100dvh` is preferred everywhere a
+ * "screenful" height is needed. Older Safari builds (< 15.4) treat
+ * `100dvh` as `100vh`; we accept that and never use raw `100vh`.
+ */
+.min-h-screen-safe { min-height: 100dvh; }
+.h-screen-safe     { height:     100dvh; }
+.max-h-screen-safe { max-height: 100dvh; }
+
+/* Backdrop-filter + position:fixed combos glitch on iOS under scroll.
+   Provide a denser fallback when backdrop-filter is *not* available. */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .glass-panel,
+  .glass-panel-heavy,
+  .glass-panel-luxe,
+  .glass-card {
+    background: rgba(26, 10, 22, 0.92) !important;
+  }
 }

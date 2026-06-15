@@ -5,6 +5,7 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { Product, User } from "../types";
+import { useMotionSafety } from "../lib/useMotionSafety";
 
 interface AtelierStackerProps {
   products: Product[];
@@ -56,6 +57,7 @@ export default function AtelierStacker({
   currentUser,
   onAddPoints
 }: AtelierStackerProps) {
+  const safetyMode = useMotionSafety();
   // Mode selection: 'neck', 'ear', 'hand'
   const [canvasMode, setCanvasMode] = useState<"neck" | "ear" | "hand">("neck");
 
@@ -422,7 +424,7 @@ export default function AtelierStacker({
               {showSilhouette && canvasMode === "neck" && (
                 <motion.div
                   key="neckSilhouette"
-                  initial={{ opacity: 0 }}
+                  initial={safetyMode ? false : { opacity: 0 }}
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
                   className="absolute inset-0 flex items-center justify-center pointer-events-none"
@@ -438,7 +440,7 @@ export default function AtelierStacker({
               {showSilhouette && canvasMode === "ear" && (
                 <motion.div
                   key="earSilhouette"
-                  initial={{ opacity: 0 }}
+                  initial={safetyMode ? false : { opacity: 0 }}
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
                   className="absolute inset-0 flex items-center justify-center pointer-events-none"
@@ -454,7 +456,7 @@ export default function AtelierStacker({
               {showSilhouette && canvasMode === "hand" && (
                 <motion.div
                   key="handSilhouette"
-                  initial={{ opacity: 0 }}
+                  initial={safetyMode ? false : { opacity: 0 }}
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
                   className="absolute inset-0 flex items-center justify-center pointer-events-none"
@@ -721,7 +723,7 @@ export default function AtelierStacker({
             <AnimatePresence>
               {saveConfirmation && (
                 <motion.div
-                  initial={{ opacity: 0, y: 10 }}
+                  initial={safetyMode ? false : { opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0 }}
                   className="bg-gold-classic/10 border border-gold-classic/30 text-gold-classic py-2.5 px-3 rounded-sm text-center text-[10px] font-outfit tracking-widest uppercase flex items-center justify-center gap-1.5"
@@ -733,7 +735,7 @@ export default function AtelierStacker({
 
               {purchaseConfirmation && (
                 <motion.div
-                  initial={{ opacity: 0, y: 10 }}
+                  initial={safetyMode ? false : { opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0 }}
                   className="bg-emerald-950/80 border border-emerald-500/30 text-emerald-400 py-3 px-3 rounded-sm text-center text-[10px] font-outfit tracking-widest uppercase flex flex-col gap-1"

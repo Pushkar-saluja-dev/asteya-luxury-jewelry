@@ -4,6 +4,7 @@ import { motion, AnimatePresence, useScroll, useTransform } from "motion/react";
 import asteaLogo from "../assets/asteya-logo.png";
 import { User as UserType } from "../types";
 import { checkIsAdmin } from "../lib/admin";
+import { useMotionSafety } from "../lib/useMotionSafety";
 
 interface HeaderProps {
   cartCount: number;
@@ -28,10 +29,16 @@ export default function Header({
 }: HeaderProps) {
   const [scrolled, setScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const safetyMode = useMotionSafety();
   const { scrollY } = useScroll();
 
-  const headerOpacity = useTransform(scrollY, [0, 100], [0.35, 0.95]);
-  const headerY = useTransform(scrollY, [0, 100], [0, -10]);
+  // iOS Safari: useScroll/useTransform can drop frames on pull-to-refresh,
+  // so gate the dynamic transforms behind a prefers-reduced-motion or
+  // touch-Safari safety switch.
+  const headerOpacity = safetyMode
+    ? 0.95
+    : useTransform(scrollY, [0, 100], [0.35, 0.95]);
+  const headerY = safetyMode ? 0 : useTransform(scrollY, [0, 100], [0, -10]);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -59,10 +66,10 @@ export default function Header({
 
       <motion.header
         style={{ y: headerY }}
-        className={`fixed top-0 left-0 right-0 z-50 transition-all duration-700 ${
+        className={`fixed top-0 left-0 right-0 z-50 transition-all duration-700 pt-safe-top ${
           scrolled
-            ? "bg-plum-950/85 backdrop-blur-xl py-3 border-b border-gold-classic/15 shadow-lg shadow-plum-950/50"
-            : "bg-transparent py-6"
+            ? "bg-plum-950/95 backdrop-blur-xl pt-safe-top pb-3 border-b border-gold-classic/15 shadow-lg shadow-plum-950/50"
+            : "bg-transparent pt-safe-top pb-6"
         }`}
       >
         <div className="max-w-7xl mx-auto px-6 flex items-center justify-between">
@@ -197,11 +204,11 @@ export default function Header({
       <AnimatePresence>
         {mobileMenuOpen && (
           <motion.div
-            initial={{ opacity: 0, x: "100%" }}
+            initial={safetyMode ? false : { opacity: 0, x: "100%" }}
             animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: "100%" }}
+            exit={safetyMode ? { opacity: 1 } : { opacity: 0, x: "100%" }}
             transition={{ type: "spring", damping: 25, stiffness: 200 }}
-            className="fixed inset-0 z-50 bg-plum-950/98 backdrop-blur-2xl flex flex-col p-8 justify-between"
+            className="fixed inset-0 z-50 bg-plum-950/98 backdrop-blur-2xl flex flex-col p-8 justify-between min-h-screen-safe pb-safe-bottom pt-safe-top"
           >
             <div>
               <div className="flex justify-between items-center mb-16">
@@ -227,7 +234,7 @@ export default function Header({
                 {navItems.map((item, index) => (
                   <motion.button
                     key={item.id}
-                    initial={{ opacity: 0, x: -20 }}
+                    initial={safetyMode ? false : { opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: index * 0.05 }}
                     onClick={() => {

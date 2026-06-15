@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback } from "react";
+import { useEffect, useRef, useCallback, useState } from "react";
 
 interface Particle {
   id: number;
@@ -35,6 +35,9 @@ export default function ParticleSystem({
   const mouseRef = useRef({ x: 0, y: 0, isActive: false });
   const particlesRef = useRef<Particle[]>([]);
   const animationFrameRef = useRef<number | undefined>(undefined);
+
+  // iOS Safari + respect user's accessibility wish: bail on motion
+  const [reducedMotion, setReducedMotion] = useState(false);
 
   const getSpeedMultiplier = useCallback(() => {
     switch (speed) {
@@ -101,6 +104,21 @@ export default function ParticleSystem({
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
+    // iOS-safe prefers-reduced-motion subscription
+    const reducedMotionQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const updateReducedMotion = () => setReducedMotion(reducedMotionQuery.matches);
+    updateReducedMotion();
+    if (reducedMotionQuery.addEventListener) {
+      reducedMotionQuery.addEventListener("change", updateReducedMotion);
+    } else {
+      reducedMotionQuery.addListener(updateReducedMotion);
+    }
+
+    // iOS Safari shrinks the canvas when fixed canvas is not pulsing,
+    // so we size with 100dvh where supported. innerWidth/Height is
+    // fine for resize handler but we set CSS height to viewport.
+    const sizingVar = typeof window !== "undefined" && "visualViewport" in window ? window.innerHeight : window.innerHeight;
+
     const resizeCanvas = () => {
       canvas.width = window.innerWidth;
       canvas.height = window.innerHeight;
@@ -108,7 +126,11 @@ export default function ParticleSystem({
     resizeCanvas();
     window.addEventListener("resize", resizeCanvas);
 
-    particlesRef.current = Array.from({ length: particleCount }, () =>
+    // iOS detection – throttle particle count to keep device fluid.
+    const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent || "");
+    const effectiveCount = isIOS ? Math.max(8, Math.min(particleCount, 20)) : particleCount;
+
+    particlesRef.current = Array.from({ length: effectiveCount }, () =>
       createParticle(canvas.width, canvas.height)
     );
 
@@ -124,7 +146,32 @@ export default function ParticleSystem({
     };
     canvas.addEventListener("mousemove", handleMouseMove);
 
+    let pageVisible = document.visibilityState === "visible";
+    const handleVisibilityChange = () => {
+      pageVisible = document.visibilityState === "visible";
+    };
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    // Skip drawing entirely while canvas is off-screen (saves CPU/GPU
+    // on long pages where Hero/atelier is below the fold).
+    let inView = true;
+    let io: IntersectionObserver | null = null;
+    if (typeof IntersectionObserver !== "undefined") {
+      io = new IntersectionObserver(
+        ([entry]) => { inView = entry.isIntersecting; },
+        { threshold: 0 }
+      );
+      io.observe(canvas);
+    }
+
+    let stopped = false;
+
     const animate = () => {
+      if (stopped || reducedMotion || !pageVisible || !inView) {
+        // Even if we skip the rAF, we still tick once more after
+        // conditions change so we don't leak timers.
+        return;
+      }
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
       particlesRef.current.forEach((particle) => {
@@ -194,20 +241,66 @@ export default function ParticleSystem({
       animationFrameRef.current = requestAnimationFrame(animate);
     };
 
+    // Seed one frame even if reduced-motion is on, so canvas is
+    // not blank if anything reads from it before motion resumes.
     animate();
 
+    // Re-arm the loop whenever any of the gate conditions flip, so
+    // we don't leak timers when the page backgrounds or scrolls offscreen.
+    let wakeupFrame: number | undefined;
+    const tryWake = () => {
+      if (
+        !stopped &&
+        animationFrameRef.current === undefined &&
+        !reducedMotion &&
+        pageVisible &&
+        inView
+      ) {
+        wakeupFrame = requestAnimationFrame(() => {
+          wakeupFrame = undefined;
+          animate();
+        });
+      }
+    };
+    document.addEventListener("visibilitychange", tryWake);
+    if (io) io.observe(canvas);
+    if (reducedMotionQuery.addEventListener) {
+      reducedMotionQuery.addEventListener("change", tryWake);
+    } else {
+      reducedMotionQuery.addListener(tryWake);
+    }
+
     return () => {
+      stopped = true;
+      if (wakeupFrame !== undefined) cancelAnimationFrame(wakeupFrame);
+      if (animationFrameRef.current !== undefined) {
+        cancelAnimationFrame(animationFrameRef.current);
+      }
+      if (io) io.disconnect();
       window.removeEventListener("resize", resizeCanvas);
       canvas.removeEventListener("mousemove", handleMouseMove);
-      if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      document.removeEventListener("visibilitychange", tryWake);
+      if (reducedMotionQuery.removeEventListener) {
+        reducedMotionQuery.removeEventListener("change", updateReducedMotion);
+        reducedMotionQuery.removeEventListener("change", tryWake);
+      } else {
+        reducedMotionQuery.removeListener(updateReducedMotion);
+        reducedMotionQuery.removeListener(tryWake);
+      }
     };
   }, [particleCount, particleType, speed, direction, colorScheme, interactive, createParticle]);
 
   return (
     <canvas
       ref={canvasRef}
+      aria-hidden
       className={`fixed inset-0 pointer-events-none z-0 ${className}`}
-      style={{ width: "100%", height: "100%" }}
+      style={{
+        width: "100%",
+        // dvh where supported, vh fallback for older WebViews.
+        height: typeof window !== "undefined" && "visualViewport" in window ? "100dvh" : "100vh",
+      }}
     />
   );
 }

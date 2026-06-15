@@ -2,6 +2,7 @@ import { useState, useRef, MouseEvent, useEffect } from "react";
 import { X, ShoppingBag, Sparkles, Heart, ShieldCheck, HelpCircle, Box } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { Product } from "../types";
+import { useMotionSafety } from "../lib/useMotionSafety";
 
 interface ProductDetailModalProps {
   product: Product;
@@ -107,6 +108,8 @@ export default function ProductDetailModal({
   onAddToCart,
   onTryOn
 }: ProductDetailModalProps) {
+  const safetyMode = useMotionSafety();
+
   const [activeImgIndex, setActiveImgIndex] = useState(0);
   const [selectedSize, setSelectedSize] = useState("7");
   const [view3D, setView3D] = useState(false);
@@ -152,7 +155,7 @@ export default function ProductDetailModal({
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
         {/* Backdrop overlay */}
         <motion.div
-          initial={{ opacity: 0 }}
+          initial={safetyMode ? false : { opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           onClick={onClose}
@@ -161,7 +164,7 @@ export default function ProductDetailModal({
 
         {/* Modal Window */}
         <motion.div
-          initial={{ opacity: 0, scale: 0.95, y: 30 }}
+          initial={safetyMode ? false : { opacity: 0, scale: 0.95, y: 30 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: 30 }}
           transition={{ duration: 0.6, ease: "easeOut" }}
@@ -385,7 +388,7 @@ export default function ProductDetailModal({
                 <AnimatePresence>
                   {accordionOpen && (
                     <motion.div
-                      initial={{ height: 0, opacity: 0 }}
+                      initial={safetyMode ? false : { height: 0, opacity: 0 }}
                       animate={{ height: "auto", opacity: 1 }}
                       exit={{ height: 0, opacity: 0 }}
                       className="text-xs font-outfit text-gray-300 p-4 divide-y divide-gold-classic/5"
