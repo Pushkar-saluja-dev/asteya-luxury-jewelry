@@ -4,6 +4,31 @@ import { motion, AnimatePresence } from "motion/react";
 import { Product } from "../types";
 import { useMotionSafety } from "../lib/useMotionSafety";
 
+const base64ToFile = (base64String: string, filename: string): File => {
+  const arr = base64String.split(",");
+  const mime = arr[0].match(/:(.*?);/)?.[1] || "image/png";
+  const bstr = atob(arr[1]);
+  let n = bstr.length;
+  const u8arr = new Uint8Array(n);
+  while (n--) {
+    u8arr[n] = bstr.charCodeAt(n);
+  }
+  return new File([u8arr], filename, { type: mime });
+};
+
+const getAdminEmail = (): string => {
+  try {
+    const saved = localStorage.getItem("asteya_user");
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      return parsed.email || "";
+    }
+  } catch (e) {
+    console.error("Failed to parse admin email from localStorage:", e);
+  }
+  return "";
+};
+
 interface AdminDashboardProps {
   products: Product[];
   onRefreshProducts: () => void;
@@ -274,9 +299,25 @@ export default function AdminDashboard({ products, onRefreshProducts }: AdminDas
         aiData.backgroundColor || "white"
       );
 
-      // 3. Set the Try-on image url to the transparent cropped base64 PNG
-      setTryOnImageUrl(cleanTryOnImage);
-      setStatusMessage("ASTEYA AI: Snapchat Virtual Try-On filter isolated and aligned straight!");
+      // 3. Set the Try-on image url to the transparent cropped image uploaded to the server
+      const filename = `tryon_${Date.now()}_${file.name.replace(/\.[^/.]+$/, "")}.png`;
+      const tryOnFile = base64ToFile(cleanTryOnImage, filename);
+      const uploadResponse = await fetch(`/api/upload?fileName=${encodeURIComponent(filename)}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "image/png",
+          "X-File-Name": encodeURIComponent(filename),
+          "X-Admin-Email": getAdminEmail()
+        },
+        body: tryOnFile
+      });
+      const uploadData = await uploadResponse.json();
+      if (uploadData.success) {
+        setTryOnImageUrl(uploadData.uploadedUrl);
+        setStatusMessage("ASTEYA AI: Snapchat Virtual Try-On filter isolated and uploaded successfully!");
+      } else {
+        throw new Error(uploadData.error || "Try-on image upload failed.");
+      }
     } catch (err: any) {
       console.error("AI Tryon upload classification error:", err);
       setErrorMessage("Processed with custom client-side isolated Atelier frame.");
@@ -288,9 +329,25 @@ export default function AdminDashboard({ products, onRefreshProducts }: AdminDas
             [0, 0, 100, 100],
             "any"
           );
-          setTryOnImageUrl(cleanTryOnImage);
+          const filename = `tryon_fallback_${Date.now()}_${file.name.replace(/\.[^/.]+$/, "")}.png`;
+          const tryOnFile = base64ToFile(cleanTryOnImage, filename);
+          const uploadResponse = await fetch(`/api/upload?fileName=${encodeURIComponent(filename)}`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "image/png",
+              "X-File-Name": encodeURIComponent(filename),
+              "X-Admin-Email": getAdminEmail()
+            },
+            body: tryOnFile
+          });
+          const uploadData = await uploadResponse.json();
+          if (uploadData.success) {
+            setTryOnImageUrl(uploadData.uploadedUrl);
+          } else {
+            setTryOnImageUrl(URL.createObjectURL(file));
+          }
         } catch (cropErr) {
-          setTryOnImageUrl(rawBase64);
+          setTryOnImageUrl(URL.createObjectURL(file));
         }
       }
     } finally {
@@ -348,15 +405,29 @@ export default function AdminDashboard({ products, onRefreshProducts }: AdminDas
       setCustomSpecKey2("Gem Cut");
       setCustomSpecVal2("Haute Brilliance faceted");
 
-      // 4. Store the raw base64 directly in imagesList as-is (preserving Atelier photography original detail)
-      setImagesList((prev) => [...prev, rawBase64]);
-
-      setStatusMessage("Fine joaillerie piece details auto-filled successfully!");
+      // 4. Upload the original file to `/api/upload` instead of storing base64
+      const filename = `product_${Date.now()}_${file.name.replace(/\s+/g, "_")}`;
+      const uploadResponse = await fetch(`/api/upload?fileName=${encodeURIComponent(filename)}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": file.type || "application/octet-stream",
+          "X-File-Name": encodeURIComponent(filename),
+          "X-Admin-Email": getAdminEmail()
+        },
+        body: file // Direct binary stream!
+      });
+      const uploadData = await uploadResponse.json();
+      if (uploadData.success) {
+        setImagesList((prev) => [...prev, uploadData.uploadedUrl]);
+        setStatusMessage("Fine joaillerie piece details and photo uploaded successfully!");
+      } else {
+        throw new Error(uploadData.error || "Product photo upload failed.");
+      }
     } catch (err: any) {
       console.error("AI Upload classification error:", err);
       setErrorMessage("Fine jewel processed with custom standard Atelier frame.");
       
-      if (rawBase64) {
+      if (file) {
         const fileNameLower = file.name.toLowerCase();
         let guessedCategory: "rings" | "necklaces" | "earrings" | "bracelets" = "rings";
         let guessedLabel = "Ring Ateliers";
@@ -374,7 +445,28 @@ export default function AdminDashboard({ products, onRefreshProducts }: AdminDas
 
         setCategory(guessedCategory);
         setCategoryLabel(guessedLabel);
-        setImagesList((prev) => [...prev, rawBase64]);
+
+        // Upload the file in fallback mode
+        try {
+          const filename = `product_fallback_${Date.now()}_${file.name.replace(/\s+/g, "_")}`;
+          const uploadResponse = await fetch(`/api/upload?fileName=${encodeURIComponent(filename)}`, {
+            method: "POST",
+            headers: {
+              "Content-Type": file.type || "application/octet-stream",
+              "X-File-Name": encodeURIComponent(filename),
+              "X-Admin-Email": getAdminEmail()
+            },
+            body: file
+          });
+          const uploadData = await uploadResponse.json();
+          if (uploadData.success) {
+            setImagesList((prev) => [...prev, uploadData.uploadedUrl]);
+          } else {
+            setImagesList((prev) => [...prev, URL.createObjectURL(file)]);
+          }
+        } catch (uploadErr) {
+          setImagesList((prev) => [...prev, URL.createObjectURL(file)]);
+        }
       } else {
         setImagesList((prev) => [...prev, "https://images.unsplash.com/photo-1605100804763-247f67b3557e?auto=format&fit=crop&q=80&w=600"]);
       }
@@ -413,7 +505,8 @@ export default function AdminDashboard({ products, onRefreshProducts }: AdminDas
         method: "POST",
         headers: {
           "Content-Type": contentType,
-          "X-File-Name": encodeURIComponent(file.name)
+          "X-File-Name": encodeURIComponent(file.name),
+          "X-Admin-Email": getAdminEmail()
         },
         body: file // Direct binary stream!
       });
@@ -451,7 +544,8 @@ export default function AdminDashboard({ products, onRefreshProducts }: AdminDas
         method: "POST",
         headers: {
           "Content-Type": "text/plain",
-          "X-File-Name": encodeURIComponent(file.name)
+          "X-File-Name": encodeURIComponent(file.name),
+          "X-Admin-Email": getAdminEmail()
         },
         body: file // Direct binary stream!
       });
@@ -524,7 +618,10 @@ export default function AdminDashboard({ products, onRefreshProducts }: AdminDas
       // Fallback simulates db update locally or routes to live database
       const response = await fetch(url, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "X-Admin-Email": getAdminEmail()
+        },
         body: JSON.stringify(newProductPayload)
       });
       
@@ -549,7 +646,12 @@ export default function AdminDashboard({ products, onRefreshProducts }: AdminDas
     
     setStatusMessage("Deleting registry entry...");
     try {
-      await fetch(`/api/products/${slug}/delete`, { method: "DELETE" });
+      await fetch(`/api/products/${slug}/delete`, {
+        method: "DELETE",
+        headers: {
+          "X-Admin-Email": getAdminEmail()
+        }
+      });
       setStatusMessage("Deleted successfully.");
       onRefreshProducts();
     } catch (e) {

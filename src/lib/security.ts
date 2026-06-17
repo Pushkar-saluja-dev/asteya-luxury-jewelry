@@ -181,6 +181,7 @@ export const isAdminEmail = (email: string | undefined): boolean => {
     "pushk@asteya-paris.com",
     "pushk@asteya.com",
     "pushkarsaluja2008@gmail.com",
+    "asteya.in@gmail.com",
   ];
 
   return ADMIN_EMAILS.map(e => e.toLowerCase()).includes(normalizedEmail);
