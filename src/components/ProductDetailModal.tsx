@@ -215,7 +215,7 @@ export default function ProductDetailModal({
                   ref={imgContainerRef}
                   onMouseMove={handleMouseMove}
                   onMouseLeave={handleMouseLeave}
-                  className="relative w-full h-full cursor-zoom-in group select-none flex items-center justify-center"
+                  className="absolute inset-0 cursor-zoom-in group select-none flex items-center justify-center"
                 >
                   <img
                     src={product.images[activeImgIndex]}
@@ -248,7 +248,7 @@ export default function ProductDetailModal({
                 </div>
               ) : (
                 /* Native 3D model-viewer integration */
-                <div className="w-full h-full relative">
+                <div className="absolute inset-0">
                   <ErrorBoundary name="3D/model-viewer">
                     {product.modelUrl ? (
                       <ThreeDViewer url={product.modelUrl} name={product.name} />
