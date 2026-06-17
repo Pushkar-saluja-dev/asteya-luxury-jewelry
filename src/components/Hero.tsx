@@ -120,7 +120,10 @@ export default function Hero({ onExplore }: HeroProps) {
         aria-hidden="true"
       >
         <img
-          src="https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?auto=format&fit=crop&q=80&w=1920"
+          src={isMobile
+            ? "https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?auto=format&fit=crop&q=75&w=800"
+            : "https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?auto=format&fit=crop&q=80&w=1920"
+          }
           alt=""
           className="w-full h-full object-cover object-center scale-110 filter grayscale contrast-125"
           referrerPolicy="no-referrer"

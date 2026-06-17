@@ -133,6 +133,33 @@ const calculateProportionalTryOnScale = (product: Product, category: string) => 
   return 0.22; // rings/bracelets
 };
 
+const loadScript = (src: string): Promise<void> => {
+  return new Promise((resolve, reject) => {
+    const existing = document.querySelector(`script[src="${src}"]`);
+    if (existing) {
+      const isLoaded = existing.getAttribute('data-loaded') === 'true';
+      if (isLoaded) {
+        resolve();
+      } else {
+        existing.addEventListener('load', () => resolve());
+        existing.addEventListener('error', (e) => reject(e));
+      }
+      return;
+    }
+
+    const script = document.createElement('script');
+    script.src = src;
+    script.crossOrigin = "anonymous";
+    script.async = true;
+    script.onload = () => {
+      script.setAttribute('data-loaded', 'true');
+      resolve();
+    };
+    script.onerror = (e) => reject(e);
+    document.body.appendChild(script);
+  });
+};
+
 export default function AITryOnStudio({
   products,
   selectedProduct,
@@ -181,6 +208,7 @@ export default function AITryOnStudio({
   >("idle");
   const [analysisLogs, setAnalysisLogs] = useState<string>("");
   const [aiReport, setAiReport] = useState<TryOnResponse | null>(null);
+  const [mediaPipeScriptsLoaded, setMediaPipeScriptsLoaded] = useState(!!(window as any).FaceMesh);
 
   // Position adjustments for jewel overlays (custom styling coordinate state)
   const [jewelScale, setJewelScale] = useState(0.5);
@@ -211,6 +239,32 @@ export default function AITryOnStudio({
   useEffect(() => {
     manualOffsetsRef.current = manualOffsets;
   }, [manualOffsets]);
+
+  useEffect(() => {
+    if ((window as any).FaceMesh) {
+      setMediaPipeScriptsLoaded(true);
+      return;
+    }
+
+    let active = true;
+    const loadMediaPipe = async () => {
+      try {
+        await loadScript("https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js");
+        await loadScript("https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js");
+        if (active) {
+          setMediaPipeScriptsLoaded(true);
+          console.log("ASTEYA Core: MediaPipe FaceMesh scripts loaded dynamically.");
+        }
+      } catch (err) {
+        console.error("ASTEYA Core: Dynamic MediaPipe script loading failed:", err);
+      }
+    };
+
+    loadMediaPipe();
+    return () => {
+      active = false;
+    };
+  }, []);
 
   // New interactive landmark pins states
   const [landmarks, setLandmarks] = useState(DEFAULT_LANDMARKS);
@@ -483,7 +537,7 @@ export default function AITryOnStudio({
         } catch (e) {}
       }
     };
-  }, [sourceMode, streamActive, snappedPhoto, activeProduct]);
+  }, [sourceMode, streamActive, snappedPhoto, activeProduct, mediaPipeScriptsLoaded]);
 
   const initWebcam = async () => {
     setCameraError(null);
@@ -707,14 +761,14 @@ export default function AITryOnStudio({
     if (sourceMode === "model" && selectedModel) {
       runAutoMeshOnStaticImage(selectedModel.url);
     }
-  }, [selectedModel, sourceMode, activeProduct?.id]);
+  }, [selectedModel, sourceMode, activeProduct?.id, mediaPipeScriptsLoaded]);
 
   // Automatically trigger FaceMesh static analysis on image upload
   useEffect(() => {
     if (sourceMode === "upload" && uploadedBase64) {
       runAutoMeshOnStaticImage(uploadedBase64);
     }
-  }, [uploadedBase64, sourceMode, activeProduct?.id]);
+  }, [uploadedBase64, sourceMode, activeProduct?.id, mediaPipeScriptsLoaded]);
 
   // Execute NVIDIA NIM AI analysis call & actual MediaPipe face alignment
   const triggerAICognitionAnalysis = async () => {
