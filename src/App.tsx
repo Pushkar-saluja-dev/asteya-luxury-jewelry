@@ -14,10 +14,19 @@ import VIPCircle from "./components/VIPCircle";
 import AdminDashboard from "./components/AdminDashboard";
 import AIAestheticConcierge from "./components/AIAestheticConcierge";
 import ParticleSystem from "./components/ParticleSystem";
+import ErrorBoundary from "./components/ErrorBoundary";
 import { checkIsAdmin } from "./lib/admin";
 import { useMotionSafety } from "./lib/useMotionSafety";
+import { useMountLog } from "./lib/useMountLog";
 
 import { Product, CartItem, User } from "./types";
+
+function MountTracker({ name }: { name: string }) {
+  useEffect(() => {
+    console.log(`${name} mounted`);
+  }, [name]);
+  return null;
+}
 
 // Scroll-reveal wrapper component
 function ScrollReveal({ children, delay = 0, className = "" }: { children: React.ReactNode; delay?: number; className?: string }) {
@@ -27,6 +36,11 @@ function ScrollReveal({ children, delay = 0, className = "" }: { children: React
   useEffect(() => {
     const element = ref.current;
     if (!element) return;
+
+    if (typeof IntersectionObserver === "undefined") {
+      setIsVisible(true);
+      return;
+    }
 
     // Fallback: guarantee visibility after a delay if IntersectionObserver fails on mobile
     const timer = setTimeout(() => {
@@ -109,7 +123,7 @@ export default function App() {
           category: "rings",
           categoryLabel: "Ring Ateliers",
           price: 3450,
-          description: "A breathtaking cushion-cut raw natural violet Amethyst, hand-set on an 18-karat filigree royal crown band with double rows of pavé VVS1 flawless diamonds. Handcrafted inside our Parisian atelier.",
+          description: "A breathtaking cushion-cut raw natural violet Amethyst, hand-set on an 18-karat filigree royal crown band with double rows of pavÃ© VVS1 flawless diamonds. Handcrafted inside our Parisian atelier.",
           materials: ["18K Recycled Yellow Gold", "3.4ct Royal Amethyst", "0.42ct Flawless White Diamonds"],
           dimensions: "Amethyst face: 10mm x 10mm. Select band width.",
           caratWeight: 3.82,
@@ -133,7 +147,7 @@ export default function App() {
           categoryLabel: "Neckwear Ateliers",
           price: 8900,
           description: "Suspended from a fluid 18-karat gold liquid cord, this circular pendant features a mesmerizing diamond galaxy swirl surrounding a singular luminous floating marquis teardrop. Reflects cosmic light brilliantly.",
-          materials: ["18K Champagne White Gold", "1.85ct F-Color Marquis Diamond", "1.25ct Pavé Diamond Orbit"],
+          materials: ["18K Champagne White Gold", "1.85ct F-Color Marquis Diamond", "1.25ct PavÃ© Diamond Orbit"],
           dimensions: "Pendant Diameter: 22mm.",
           caratWeight: 3.1,
           images: [
@@ -317,16 +331,18 @@ export default function App() {
       {/* Background Particle System */}
       <ParticleSystem particleCount={30} particleType="mixed" speed="slow" direction="random" colorScheme="gold" className="pointer-events-none" />
 
-      <Header
-        cartCount={cartItems.reduce((acc, item) => acc + item.quantity, 0)}
-        wishlistCount={wishlistItems.length}
-        activeTab={activeTab}
-        setActiveTab={setActiveTab}
-        currentUser={currentUser}
-        onOpenCart={() => setIsCartOpen(true)}
-        onOpenWishlist={() => setIsWishlistOpen(true)}
-        onOpenVIP={() => setActiveTab("vip")}
-      />
+      <ErrorBoundary name="Header">
+        <Header
+          cartCount={cartItems.reduce((acc, item) => acc + item.quantity, 0)}
+          wishlistCount={wishlistItems.length}
+          activeTab={activeTab}
+          setActiveTab={setActiveTab}
+          currentUser={currentUser}
+          onOpenCart={() => setIsCartOpen(true)}
+          onOpenWishlist={() => setIsWishlistOpen(true)}
+          onOpenVIP={() => setActiveTab("vip")}
+        />
+     </ErrorBoundary>
 
       <main className="relative z-10">
         <AnimatePresence mode="wait">
@@ -338,197 +354,205 @@ export default function App() {
               exit={{ opacity: 0 }}
               transition={{ duration: 0.5 }}
             >
-              <Hero onExplore={() => {
-                const galleryNode = document.getElementById("galleryAtelier");
-                if (galleryNode) galleryNode.scrollIntoView({ behavior: "smooth" });
-              }} />
+              <ErrorBoundary name="Hero">
+                <Hero onExplore={() => {
+                  const galleryNode = document.getElementById("galleryAtelier");
+                  if (galleryNode) galleryNode.scrollIntoView({ behavior: "smooth" });
+                }} />
+          </ErrorBoundary>
 
-              <section id="galleryAtelier" className="max-w-7xl mx-auto px-6 py-24 scroll-mt-20">
-                <ScrollReveal>
-                  <div className="flex flex-col lg:flex-row justify-between items-start lg:items-end mb-12 gap-6 border-b border-gold-classic/10 pb-8">
-                    <div>
+              <ErrorBoundary name="Collections">
+                <MountTracker name="Collections" />
+                <section id="galleryAtelier" className="max-w-7xl mx-auto px-6 py-24 scroll-mt-20">
+                  <ScrollReveal>
+                    <div className="flex flex-col lg:flex-row justify-between items-start lg:items-end mb-12 gap-6 border-b border-gold-classic/10 pb-8">
+                      <div>
+                        <motion.div
+                          initial={safetyMode ? false : { opacity: 0, x: -20 }}
+                          whileInView={{ opacity: 1, x: 0 }}
+                          viewport={{ once: true }}
+                          transition={{ duration: 0.6 }}
+                        >
+                          <span className="text-[10px] tracking-[0.4em] text-gold-classic uppercase font-outfit font-semibold block mb-2">
+                            ATELIER GALLERY
+                          </span>
+                          <h2 className="font-cinzel text-2xl sm:text-4xl tracking-widest text-[#f5f0f5] uppercase font-bold">
+                            FINE JOAILLERIE COLLECTIONS
+                          </h2>
+                        </motion.div>
+                      </div>
+
                       <motion.div
-                        initial={safetyMode ? false : { opacity: 0, x: -20 }}
+                        initial={safetyMode ? false : { opacity: 0, x: 20 }}
                         whileInView={{ opacity: 1, x: 0 }}
                         viewport={{ once: true }}
-                        transition={{ duration: 0.6 }}
+                        transition={{ duration: 0.6, delay: 0.2 }}
+                        className="flex flex-wrap gap-4 font-outfit uppercase tracking-widest text-[10px]"
                       >
-                        <span className="text-[10px] tracking-[0.4em] text-gold-classic uppercase font-outfit font-semibold block mb-2">
-                          ATELIER GALLERY
-                        </span>
-                        <h2 className="font-cinzel text-2xl sm:text-4xl tracking-widest text-[#f5f0f5] uppercase font-bold">
-                          FINE JOAILLERIE COLLECTIONS
-                        </h2>
+                        {["all", "rings", "necklaces", "earrings", "bracelets"].map((cat) => (
+                          <motion.button
+                            key={cat}
+                            whileHover={{ scale: 1.05, y: -2 }}
+                            whileTap={{ scale: 0.95 }}
+                            onClick={() => setSelectedCategory(cat)}
+                            className={`py-2 px-5 rounded-full border transition-all cursor-pointer ${
+                              selectedCategory === cat
+                                ? "border-gold-classic bg-gold-classic/15 text-gold-classic font-bold shadow-gold-soft"
+                                : "border-gold-classic/10 text-gray-400 hover:text-gold-pale hover:border-gold-classic/30"
+                            }`}
+                          >
+                            {cat === "all" ? "All Ateliers" : cat}
+                          </motion.button>
+                        ))}
                       </motion.div>
-                    </div>
-
-                    <motion.div
-                      initial={safetyMode ? false : { opacity: 0, x: 20 }}
-                      whileInView={{ opacity: 1, x: 0 }}
-                      viewport={{ once: true }}
-                      transition={{ duration: 0.6, delay: 0.2 }}
-                      className="flex flex-wrap gap-4 font-outfit uppercase tracking-widest text-[10px]"
-                    >
-                      {["all", "rings", "necklaces", "earrings", "bracelets"].map((cat) => (
-                        <motion.button
-                          key={cat}
-                          whileHover={{ scale: 1.05, y: -2 }}
-                          whileTap={{ scale: 0.95 }}
-                          onClick={() => setSelectedCategory(cat)}
-                          className={`py-2 px-5 rounded-full border transition-all cursor-pointer ${
-                            selectedCategory === cat
-                              ? "border-gold-classic bg-gold-classic/15 text-gold-classic font-bold shadow-gold-soft"
-                              : "border-gold-classic/10 text-gray-400 hover:text-gold-pale hover:border-gold-classic/30"
-                          }`}
-                        >
-                          {cat === "all" ? "All Ateliers" : cat}
-                        </motion.button>
-                      ))}
-                    </motion.div>
-                  </div>
-                </ScrollReveal>
-
-                <ScrollReveal delay={100}>
-                  <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-center mb-8 bg-plum-950/25 p-4 rounded-sm border border-gold-classic/10 glass-panel-luxe" role="search" aria-label="Product filters">
-                    <div className="md:col-span-5 relative">
-                      <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gold-pale/50" aria-hidden="true" />
-                      <label htmlFor="search-input" className="sr-only">Search products</label>
-                      <input
-                        id="search-input"
-                        type="text"
-                        placeholder="Search diamond purity, gold collection, amethysts..."
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        className="w-full bg-plum-900 border border-gold-classic/10 focus:border-gold-classic/40 p-3 pl-11 text-xs rounded-sm outline-none text-[#f5f0f5] placeholder-gray-500 font-outfit transition-all duration-300"
-                        aria-label="Search products"
-                      />
-                    </div>
-
-                    <div className="md:col-span-4 relative flex items-center gap-2">
-                      <SlidersHorizontal className="w-3.5 h-3.5 text-gold-classic" aria-hidden="true" />
-                      <label htmlFor="filter-collection" className="sr-only">Filter by collection</label>
-                      <select
-                        id="filter-collection"
-                        value={selectedCollection}
-                        onChange={(e) => setSelectedCollection(e.target.value)}
-                        className="w-full bg-plum-900 border border-gold-classic/10 p-3 text-xs text-[#f5f0f5] rounded-sm focus:outline-none font-outfit focus:border-gold-classic/40 transition-all duration-300"
-                        aria-label="Filter by collection"
-                      >
-                        <option value="all">Every Atelier Collection</option>
-                        <option value="Imperial Aura">Imperial Aura</option>
-                        <option value="Stellar Orbit">Stellar Orbit</option>
-                        <option value="Elysian Forest">Elysian Forest</option>
-                        <option value="Dynasty">Dynasty Collection</option>
-                      </select>
-                    </div>
-
-                    <div className="md:col-span-3 relative flex items-center gap-2">
-                      <ArrowUpDown className="w-3.5 h-3.5 text-gold-classic" aria-hidden="true" />
-                      <label htmlFor="sort-products" className="sr-only">Sort products</label>
-                      <select
-                        id="sort-products"
-                        value={sortBy}
-                        onChange={(e) => setSortBy(e.target.value)}
-                        className="w-full bg-plum-900 border border-gold-classic/10 p-3 text-xs text-[#f5f0f5] rounded-sm focus:outline-none font-outfit focus:border-gold-classic/40 transition-all duration-300"
-                        aria-label="Sort products"
-                      >
-                        <option value="default">Default sorting</option>
-                        <option value="priceAsc">Price: Velvet Low to High</option>
-                        <option value="priceDesc">Price: Velvet High to Low</option>
-                        <option value="alphabetical">Alphanumeric Label</option>
-                      </select>
-                    </div>
-                  </div>
-                </ScrollReveal>
-
-                {loadingProducts ? (
-                  <div className="py-24 flex justify-center items-center">
-                    <motion.div
-                      animate={{ rotate: 360 }}
-                      transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                      className="relative w-16 h-16 border border-gold-classic/20 border-t-gold-classic rounded-full"
-                    />
-                  </div>
-                ) : sortedProducts.length === 0 ? (
-                  <ScrollReveal>
-                    <div className="py-24 text-center space-y-4">
-                      <motion.div
-                        initial={safetyMode ? false : { scale: 0 }}
-                        animate={{ scale: 1 }}
-                        transition={{ type: "spring", stiffness: 200, damping: 15 }}
-                      >
-                        <AlertCircle className="w-10 h-10 text-gold-pale/40 mx-auto" />
-                      </motion.div>
-                      <h4 className="font-cinzel text-md text-gold-pale tracking-widest">No Ateliers Aligned</h4>
-                      <p className="font-cormorant italic text-sm text-gray-400">
-                        "Adjust your filter bounds to locate available collections."
-                      </p>
                     </div>
                   </ScrollReveal>
-                ) : (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
-                    {sortedProducts.map((p, index) => (
-                      <ScrollReveal key={p.id} delay={index * 80}>
-                        <ProductCard
-                          product={p}
-                          isWishlisted={wishlistItems.some((item) => item.id === p.id)}
-                          onToggleWishlist={() => handleToggleWishlist(p)}
-                          onSelect={() => {
-                            setSelectedProduct(p);
-                            setActiveDetailProduct(p);
-                          }}
+
+                  <ScrollReveal delay={100}>
+                    <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-center mb-8 bg-plum-950/25 p-4 rounded-sm border border-gold-classic/10 glass-panel-luxe" role="search" aria-label="Product filters">
+                      <div className="md:col-span-5 relative">
+                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gold-pale/50" aria-hidden="true" />
+                        <label htmlFor="search-input" className="sr-only">Search products</label>
+                        <input
+                          id="search-input"
+                          type="text"
+                          placeholder="Search diamond purity, gold collection, amethysts..."
+                          value={searchQuery}
+                          onChange={(e) => setSearchQuery(e.target.value)}
+                          className="w-full bg-plum-900 border border-gold-classic/10 focus:border-gold-classic/40 p-3 pl-11 text-xs rounded-sm outline-none text-[#f5f0f5] placeholder-gray-500 font-outfit transition-all duration-300"
+                          aria-label="Search products"
                         />
-                      </ScrollReveal>
-                    ))}
-                  </div>
-                )}
-              </section>
+                      </div>
+
+                      <div className="md:col-span-4 relative flex items-center gap-2">
+                        <SlidersHorizontal className="w-3.5 h-3.5 text-gold-classic" aria-hidden="true" />
+                        <label htmlFor="filter-collection" className="sr-only">Filter by collection</label>
+                        <select
+                          id="filter-collection"
+                          value={selectedCollection}
+                          onChange={(e) => setSelectedCollection(e.target.value)}
+                          className="w-full bg-plum-900 border border-gold-classic/10 p-3 text-xs text-[#f5f0f5] rounded-sm focus:outline-none font-outfit focus:border-gold-classic/40 transition-all duration-300"
+                          aria-label="Filter by collection"
+                        >
+                          <option value="all">Every Atelier Collection</option>
+                          <option value="Imperial Aura">Imperial Aura</option>
+                          <option value="Stellar Orbit">Stellar Orbit</option>
+                          <option value="Elysian Forest">Elysian Forest</option>
+                          <option value="Dynasty">Dynasty Collection</option>
+                        </select>
+                      </div>
+
+                      <div className="md:col-span-3 relative flex items-center gap-2">
+                        <ArrowUpDown className="w-3.5 h-3.5 text-gold-classic" aria-hidden="true" />
+                        <label htmlFor="sort-products" className="sr-only">Sort products</label>
+                        <select
+                          id="sort-products"
+                          value={sortBy}
+                          onChange={(e) => setSortBy(e.target.value)}
+                          className="w-full bg-plum-900 border border-gold-classic/10 p-3 text-xs text-[#f5f0f5] rounded-sm focus:outline-none font-outfit focus:border-gold-classic/40 transition-all duration-300"
+                          aria-label="Sort products"
+                        >
+                          <option value="default">Default sorting</option>
+                          <option value="priceAsc">Price: Velvet Low to High</option>
+                          <option value="priceDesc">Price: Velvet High to Low</option>
+                          <option value="alphabetical">Alphanumeric Label</option>
+                        </select>
+                      </div>
+                    </div>
+                  </ScrollReveal>
+
+                  {loadingProducts ? (
+                    <div className="py-24 flex justify-center items-center">
+                      <motion.div
+                        animate={{ rotate: 360 }}
+                        transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                        className="relative w-16 h-16 border border-gold-classic/20 border-t-gold-classic rounded-full"
+                      />
+                    </div>
+                  ) : sortedProducts.length === 0 ? (
+                    <ScrollReveal>
+                      <div className="py-24 text-center space-y-4">
+                        <motion.div
+                          initial={safetyMode ? false : { scale: 0 }}
+                          animate={{ scale: 1 }}
+                          transition={{ type: "spring", stiffness: 200, damping: 15 }}
+                        >
+                          <AlertCircle className="w-10 h-10 text-gold-pale/40 mx-auto" />
+                        </motion.div>
+                        <h4 className="font-cinzel text-md text-gold-pale tracking-widest">No Ateliers Aligned</h4>
+                        <p className="font-cormorant italic text-sm text-gray-400">
+                          "Adjust your filter bounds to locate available collections."
+                        </p>
+                      </div>
+                    </ScrollReveal>
+                  ) : (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+                      {sortedProducts.map((p, index) => (
+                        <ScrollReveal key={p.id} delay={index * 80}>
+                          <ProductCard
+                            product={p}
+                            isWishlisted={wishlistItems.some((item) => item.id === p.id)}
+                            onToggleWishlist={() => handleToggleWishlist(p)}
+                            onSelect={() => {
+                              setSelectedProduct(p);
+                              setActiveDetailProduct(p);
+                            }}
+                          />
+                        </ScrollReveal>
+                      ))}
+                    </div>
+                  )}
+                </section>
+              </ErrorBoundary>
 
               {/* Feature Section - AI Try On Promo */}
-              <ScrollReveal>
-                <section className="relative py-32 overflow-hidden luxury-texture">
-                  <div className="absolute inset-0 bg-gradient-to-b from-plum-950 via-plum-900 to-plum-950" />
-                  <div className="absolute inset-0 opacity-30">
-                    <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-gold-classic/10 rounded-full blur-[120px]" />
-                    <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-rose-gold/10 rounded-full blur-[100px]" />
-                  </div>
+              <ErrorBoundary name="Featured">
+                <MountTracker name="Featured" />
+                <ScrollReveal>
+                  <section className="relative py-32 overflow-hidden luxury-texture">
+                    <div className="absolute inset-0 bg-gradient-to-b from-plum-950 via-plum-900 to-plum-950" />
+                    <div className="absolute inset-0 opacity-30">
+                      <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-gold-classic/10 rounded-full blur-[120px]" />
+                      <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-rose-gold/10 rounded-full blur-[100px]" />
+                    </div>
 
-                  <div className="relative z-10 max-w-7xl mx-auto px-6 text-center">
-                    <motion.div
-                      initial={safetyMode ? false : { opacity: 0, y: 30 }}
-                      whileInView={{ opacity: 1, y: 0 }}
-                      viewport={{ once: true }}
-                      transition={{ duration: 0.8 }}
-                    >
+                    <div className="relative z-10 max-w-7xl mx-auto px-6 text-center">
                       <motion.div
-                        animate={{ rotate: [0, 10, -10, 0] }}
-                        transition={{ duration: 3, repeat: Infinity, repeatDelay: 2 }}
-                        className="inline-flex items-center gap-2 text-gold-classic mb-6"
+                        initial={safetyMode ? false : { opacity: 0, y: 30 }}
+                        whileInView={{ opacity: 1, y: 0 }}
+                        viewport={{ once: true }}
+                        transition={{ duration: 0.8 }}
                       >
-                        <Zap className="w-5 h-5" />
-                        <span className="text-[10px] tracking-[0.3em] uppercase font-outfit">AI-Powered Experience</span>
+                        <motion.div
+                          animate={{ rotate: [0, 10, -10, 0] }}
+                          transition={{ duration: 3, repeat: Infinity, repeatDelay: 2 }}
+                          className="inline-flex items-center gap-2 text-gold-classic mb-6"
+                        >
+                          <Zap className="w-5 h-5" />
+                          <span className="text-[10px] tracking-[0.3em] uppercase font-outfit">AI-Powered Experience</span>
+                        </motion.div>
+
+                        <h2 className="font-cinzel text-3xl sm:text-5xl md:text-6xl tracking-widest text-[#f5f0f5] uppercase mb-6">
+                          Virtual Try-On Studio
+                        </h2>
+
+                        <p className="font-cormorant text-lg sm:text-xl text-gray-400 italic max-w-2xl mx-auto mb-10 leading-relaxed">
+                          "Experience your chosen pieces before they arrive. Our AI-powered studio renders jewelry on your unique features with photorealistic precision."
+                        </p>
+
+                        <motion.button
+                          onClick={() => setActiveTab("tryon")}
+                          whileHover={{ scale: 1.05, boxShadow: "0 12px 50px rgba(197, 160, 89, 0.4)" }}
+                          whileTap={{ scale: 0.98 }}
+                          className="px-10 py-4 bg-gold-gradient text-plum-950 font-outfit text-xs tracking-[0.35em] uppercase font-bold rounded-sm cursor-pointer shadow-gold-glow"
+                        >
+                          Launch Studio
+                        </motion.button>
                       </motion.div>
-
-                      <h2 className="font-cinzel text-3xl sm:text-5xl md:text-6xl tracking-widest text-[#f5f0f5] uppercase mb-6">
-                        Virtual Try-On Studio
-                      </h2>
-
-                      <p className="font-cormorant text-lg sm:text-xl text-gray-400 italic max-w-2xl mx-auto mb-10 leading-relaxed">
-                        "Experience your chosen pieces before they arrive. Our AI-powered studio renders jewelry on your unique features with photorealistic precision."
-                      </p>
-
-                      <motion.button
-                        onClick={() => setActiveTab("tryon")}
-                        whileHover={{ scale: 1.05, boxShadow: "0 12px 50px rgba(197, 160, 89, 0.4)" }}
-                        whileTap={{ scale: 0.98 }}
-                        className="px-10 py-4 bg-gold-gradient text-plum-950 font-outfit text-xs tracking-[0.35em] uppercase font-bold rounded-sm cursor-pointer shadow-gold-glow"
-                      >
-                        Launch Studio
-                      </motion.button>
-                    </motion.div>
-                  </div>
-                </section>
-              </ScrollReveal>
+                    </div>
+                  </section>
+                </ScrollReveal>
+              </ErrorBoundary>
             </motion.div>
           )}
 
@@ -539,15 +563,17 @@ export default function App() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
             >
-              <AITryOnStudio
-                products={products}
-                selectedProduct={selectedProduct}
-                onSelectProduct={setSelectedProduct}
-                onAddToCart={(p) => handleAddToCart(p)}
-                onToggleWishlist={(p) => handleToggleWishlist(p)}
-                isWishlisted={(p) => wishlistItems.some((item) => item.id === p.id)}
-                currentUser={currentUser}
-              />
+              <ErrorBoundary name="AI Try-On">
+                <AITryOnStudio
+                  products={products}
+                  selectedProduct={selectedProduct}
+                  onSelectProduct={setSelectedProduct}
+                  onAddToCart={(p) => handleAddToCart(p)}
+                  onToggleWishlist={(p) => handleToggleWishlist(p)}
+                  isWishlisted={(p) => wishlistItems.some((item) => item.id === p.id)}
+                  currentUser={currentUser}
+                />
+              </ErrorBoundary>
             </motion.div>
           )}
 
@@ -558,12 +584,14 @@ export default function App() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
             >
-              <AIAestheticConcierge
-                products={products}
-                onAddToCart={(p) => handleAddToCart(p)}
-                onViewProduct={(p) => setActiveDetailProduct(p)}
-                currentUser={currentUser}
-              />
+              <ErrorBoundary name="AI Concierge">
+                <AIAestheticConcierge
+                  products={products}
+                  onAddToCart={(p) => handleAddToCart(p)}
+                  onViewProduct={(p) => setActiveDetailProduct(p)}
+                  currentUser={currentUser}
+                />
+              </ErrorBoundary>
             </motion.div>
           )}
 
@@ -574,12 +602,14 @@ export default function App() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
             >
-              <AtelierStacker
-                products={products}
-                onAddToCart={handleAddToCart}
-                currentUser={currentUser}
-                onAddPoints={handleAddPoints}
-              />
+              <ErrorBoundary name="Atelier Stacker">
+                <AtelierStacker
+                  products={products}
+                  onAddToCart={handleAddToCart}
+                  currentUser={currentUser}
+                  onAddPoints={handleAddPoints}
+                />
+              </ErrorBoundary>
             </motion.div>
           )}
 
@@ -590,11 +620,13 @@ export default function App() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
             >
-              <VIPCircle
-                currentUser={currentUser}
-                onLogin={handleLogin}
-                onLogout={handleLogout}
-              />
+              <ErrorBoundary name="VIP Circle">
+                <VIPCircle
+                  currentUser={currentUser}
+                  onLogin={handleLogin}
+                  onLogout={handleLogout}
+                />
+              </ErrorBoundary>
             </motion.div>
           )}
 
@@ -605,34 +637,38 @@ export default function App() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
             >
-              {checkIsAdmin(currentUser?.email) ? (
-                <AdminDashboard
-                  products={products}
-                  onRefreshProducts={fetchProducts}
-                />
-              ) : (
-                <div className="max-w-md mx-auto py-32 text-center space-y-6">
-                  <AlertCircle className="w-16 h-16 text-red-400 mx-auto animate-pulse" />
-                  <h3 className="font-cinzel text-xl text-white tracking-widest uppercase font-bold">ACCESS DECREE DENIED</h3>
-                  <p className="font-cormorant text-gray-300 italic text-md leading-relaxed">
-                    "Only registered curators and authorized administrators may enter this directory."
-                  </p>
-                  <motion.button
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.98 }}
-                    onClick={() => setActiveTab("catalog")}
-                    className="py-2.5 px-6 bg-gold-gradient text-plum-950 font-outfit font-bold uppercase tracking-widest text-[10px] rounded-sm cursor-pointer hover:shadow-gold-glow transition-all"
-                  >
-                    Excurse to Catalog
-                  </motion.button>
-                </div>
-              )}
+              <ErrorBoundary name="Curator Panel">
+                {checkIsAdmin(currentUser?.email) ? (
+                  <AdminDashboard
+                    products={products}
+                    onRefreshProducts={fetchProducts}
+                  />
+                ) : (
+                  <div className="max-w-md mx-auto py-32 text-center space-y-6">
+                    <AlertCircle className="w-16 h-16 text-red-400 mx-auto animate-pulse" />
+                    <h3 className="font-cinzel text-xl text-white tracking-widest uppercase font-bold">ACCESS DECREE DENIED</h3>
+                    <p className="font-cormorant text-gray-300 italic text-md leading-relaxed">
+                      "Only registered curators and authorized administrators may enter this directory."
+                    </p>
+                    <motion.button
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.98 }}
+                      onClick={() => setActiveTab("catalog")}
+                      className="py-2.5 px-6 bg-gold-gradient text-plum-950 font-outfit font-bold uppercase tracking-widest text-[10px] rounded-sm cursor-pointer hover:shadow-gold-glow transition-all"
+                    >
+                      Excurse to Catalog
+                    </motion.button>
+                  </div>
+                )}
+              </ErrorBoundary>
             </motion.div>
           )}
         </AnimatePresence>
       </main>
 
-      <footer className="border-t border-gold-classic/15 bg-plum-950 py-16 relative z-10">
+      <ErrorBoundary name="Footer">
+        <MountTracker name="Footer" />
+          <footer className="border-t border-gold-classic/15 bg-plum-950 py-16 relative z-10">
         <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 md:grid-cols-4 gap-12 font-outfit text-xs text-gray-400">
           <div className="space-y-4">
             <span className="font-cinzel text-xl text-gold-classic tracking-widest">ASTEYA</span>
@@ -666,9 +702,10 @@ export default function App() {
           </div>
         </div>
         <div className="max-w-7xl mx-auto px-6 border-t border-gold-classic/5 mt-12 pt-8 text-center text-[10px] text-gray-500 font-mono tracking-widest uppercase">
-          © 2026 ASTEYA Premium Fashion Jewelry Paris Ateliers. Powered securely with NVIDIA NIM AI. Atelier Quality Registered.
+          Â© 2026 ASTEYA Premium Fashion Jewelry Paris Ateliers. Powered securely with NVIDIA NIM AI. Atelier Quality Registered.
         </div>
       </footer>
+ </ErrorBoundary>
 
       {activeDetailProduct && (
         <ProductDetailModal

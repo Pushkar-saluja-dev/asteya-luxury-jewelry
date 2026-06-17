@@ -2,6 +2,7 @@ import { ArrowDown, Sparkles, Award, Diamond } from "lucide-react";
 import { motion, useScroll, useTransform, useSpring } from "motion/react";
 import { useEffect, useRef, useState } from "react";
 import { useMotionSafety } from "../lib/useMotionSafety";
+import { useMountLog } from "../lib/useMountLog";
 
 interface HeroProps {
   onExplore: () => void;
@@ -10,6 +11,11 @@ interface HeroProps {
 export default function Hero({ onExplore }: HeroProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const safetyMode = useMotionSafety();
+  
+  useEffect(() => {
+    console.log("Hero mounted");
+  }, []);
+
   const { scrollY } = useScroll();
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
   const [isMobile, setIsMobile] = useState(false);
@@ -31,26 +37,13 @@ export default function Hero({ onExplore }: HeroProps) {
     return () => window.removeEventListener("resize", checkMobile);
   }, []);
 
-  // Parallax transforms based on scroll — disabled on mobile or
-  // touch-Safari safety mode (where useTransform drops mid-scroll).
-  // Hooks must always run at the top level (React Rules of Hooks);
-  // the (safetyMode || isMobile) check is inside the closure, identical
-  // to the desktop branch's value when both flags are false.
-  const y1 = useTransform(scrollY, (value) => (safetyMode || isMobile) ? 0 : value * 0.4);
-  const y2 = useTransform(scrollY, (value) => (safetyMode || isMobile) ? 0 : value * 0.3);
-  const y3 = useTransform(scrollY, (value) => (safetyMode || isMobile) ? 0 : value * 0.2);
-
-  const opacityHero = useTransform(scrollY, (value) => (safetyMode || isMobile)
-    ? 1
-    : Math.max(0, 1 - value / 400));
-
-  const opacityBg = useTransform(scrollY, (value) => (safetyMode || isMobile)
-    ? 0.15
-    : Math.max(0, 0.15 * (1 - value / 400)));
-
-  const scaleHero = useTransform(scrollY, (value) => (safetyMode || isMobile)
-    ? 1
-    : Math.max(0.95, 1 - (value / 400) * 0.05));
+  // Standard range-based transforms (safest and completely immune to NaN initial states)
+  const y1 = useTransform(scrollY, [0, 500], [0, 200]);
+  const y2 = useTransform(scrollY, [0, 500], [0, 150]);
+  const y3 = useTransform(scrollY, [0, 500], [0, 100]);
+  const opacityHero = useTransform(scrollY, [0, 400], [1, 0]);
+  const opacityBg = useTransform(scrollY, [0, 400], [0.15, 0]);
+  const scaleHero = useTransform(scrollY, [0, 400], [1, 0.95]);
 
   // Smooth mouse follow for spotlight effect
   const mouseX = useSpring(mousePosition.x, { stiffness: 100, damping: 30 });
@@ -85,15 +78,15 @@ export default function Hero({ onExplore }: HeroProps) {
       {/* Animated background radial glows */}
       <div className="absolute inset-0 z-0 overflow-hidden">
         <motion.div
-          style={{ y: y1, x: mouseX }}
+          style={{ y: (isMobile || safetyMode) ? 0 : y1, x: mouseX }}
           className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[60vw] h-[60vw] max-w-[800px] h-max-[800px] bg-plum-700/20 rounded-full blur-[160px]"
         />
         <motion.div
-          style={{ y: y2 }}
+          style={{ y: (isMobile || safetyMode) ? 0 : y2 }}
           className="absolute bottom-1/4 right-1/4 w-[40vw] h-[40vw] bg-gold-classic/8 rounded-full blur-[140px] animate-pulse"
         />
         <motion.div
-          style={{ y: y3, x: mouseY }}
+          style={{ y: (isMobile || safetyMode) ? 0 : y3, x: mouseY }}
           className="absolute top-1/3 right-1/3 w-[30vw] h-[30vw] bg-rose-gold/5 rounded-full blur-[120px]"
         />
 
@@ -121,7 +114,7 @@ export default function Hero({ onExplore }: HeroProps) {
 
       {/* Cinematic background image with parallax */}
       <motion.div
-        style={{ y: y1, opacity: opacityBg }}
+        style={{ y: (isMobile || safetyMode) ? 0 : y1, opacity: (isMobile || safetyMode) ? 0.15 : opacityBg }}
         className="absolute inset-0 z-0 opacity-15 pointer-events-none mix-blend-lighten"
         role="presentation"
         aria-hidden="true"
@@ -149,7 +142,7 @@ export default function Hero({ onExplore }: HeroProps) {
 
       {/* High-fashion Content Grid */}
       <motion.div
-        style={{ opacity: opacityHero, scale: scaleHero }}
+        style={{ opacity: (isMobile || safetyMode) ? 1 : opacityHero, scale: (isMobile || safetyMode) ? 1 : scaleHero }}
         className="relative z-10 text-center max-w-4xl mx-auto flex flex-col items-center"
       >
         {/* Couture Tagline with animated lines */}
@@ -270,7 +263,7 @@ export default function Hero({ onExplore }: HeroProps) {
         transition={{ delay: 1.8, duration: 1 }}
         onClick={onExplore}
         className="absolute bottom-12 left-1/2 -translate-x-1/2 z-10 flex flex-col items-center cursor-pointer group"
-        style={{ y: y3 }}
+        style={{ y: (isMobile || safetyMode) ? 0 : y3 }}
       >
         <span className="text-[9px] tracking-[0.6em] text-gold-pale/50 uppercase font-outfit mb-4 group-hover:text-gold-classic transition-colors duration-300">
           Discover

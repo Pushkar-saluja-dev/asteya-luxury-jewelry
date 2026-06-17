@@ -3,6 +3,7 @@ import { X, ShoppingBag, Sparkles, Heart, ShieldCheck, HelpCircle, Box } from "l
 import { motion, AnimatePresence } from "motion/react";
 import { Product } from "../types";
 import { useMotionSafety } from "../lib/useMotionSafety";
+import ErrorBoundary from "./ErrorBoundary";
 
 interface ProductDetailModalProps {
   product: Product;
@@ -248,11 +249,13 @@ export default function ProductDetailModal({
               ) : (
                 /* Native 3D model-viewer integration */
                 <div className="w-full h-full relative">
-                  {product.modelUrl ? (
-                    <ThreeDViewer url={product.modelUrl} name={product.name} />
-                  ) : (
-                    <ThreeDViewer url="https://modelviewer.dev/shared-assets/models/glTF-Sample-Assets/Models/ToyCar/glTF/ToyCar.gltf" name={product.name} />
-                  )}
+                  <ErrorBoundary name="3D/model-viewer">
+                    {product.modelUrl ? (
+                      <ThreeDViewer url={product.modelUrl} name={product.name} />
+                    ) : (
+                      <ThreeDViewer url="https://modelviewer.dev/shared-assets/models/glTF-Sample-Assets/Models/ToyCar/glTF/ToyCar.gltf" name={product.name} />
+                    )}
+                  </ErrorBoundary>
                   
                   <div className="absolute bottom-4 left-1/2 -translate-x-1/2 text-[9px] tracking-widest text-gold-pale/70 uppercase font-outfit pointer-events-none text-center bg-plum-950/80 px-4 py-1 border border-gold-classic/15 rounded-full">
                     ROTATE 3D MODEL WITH MOUSE

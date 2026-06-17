@@ -16,6 +16,9 @@ const HAS_CLERK = !!(import.meta.env?.VITE_CLERK_PUBLISHABLE_KEY as string);
 
 export default function VIPCircle(props: VIPCircleProps) {
   const safetyMode = useMotionSafety();
+  useEffect(() => {
+    console.log("VIP mounted");
+  }, []);
   return (
     <div className="max-w-7xl mx-auto px-6 pt-32 pb-24 min-h-screen">
       <div className="text-center max-w-2xl mx-auto mb-16">

@@ -5,6 +5,7 @@ import asteaLogo from "../assets/asteya-logo.png";
 import { User as UserType } from "../types";
 import { checkIsAdmin } from "../lib/admin";
 import { useMotionSafety } from "../lib/useMotionSafety";
+import { useMountLog } from "../lib/useMountLog";
 
 interface HeaderProps {
   cartCount: number;
@@ -30,6 +31,9 @@ export default function Header({
   const [scrolled, setScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const safetyMode = useMotionSafety();
+  useEffect(() => {
+    console.log("Header mounted");
+  }, []);
   const { scrollY } = useScroll();
 
   // iOS Safari: useScroll/useTransform can drop frames on pull-to-refresh,
